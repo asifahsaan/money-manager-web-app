@@ -1,0 +1,436 @@
+// Prisma schema for Money Manager
+// Database: MySQL
+// All money fields use Decimal(18,2) — never Float
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum WalletType {
+  CASH
+  BANK
+  E_WALLET
+  CARD
+  OTHER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum PeriodType {
+  MONTHLY
+  CUSTOM
+}
+
+enum GoalEntryType {
+  DEPOSIT
+  WITHDRAW
+}
+
+enum DebtType {
+  PAYABLE
+  RECEIVABLE
+}
+
+enum DebtStatus {
+  OPEN
+  PARTIAL
+  CLOSED
+}
+
+enum DebtEntryType {
+  PAYMENT
+  COLLECTION
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
+model User {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(100)
+  email           String    @unique @db.VarChar(150)
+  passwordHash    String    @db.VarChar(255)
+  defaultCurrency String    @default("Rs.") @db.VarChar(10)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  accounts Account[]
+  settings Setting[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// ACCOUNT (finance profile — one user may have multiple)
+// ─────────────────────────────────────────────
+
+model Account {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(100)
+  currency  String   @default("Rs.") @db.VarChar(10)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallets      Wallet[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  goals        Goal[]
+  debts        Debt[]
+  recurrings   Recurring[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+// ─────────────────────────────────────────────
+// WALLET
+// ─────────────────────────────────────────────
+
+model Wallet {
+  id              Int        @id @default(autoincrement())
+  accountId       Int
+  account         Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name            String     @db.VarChar(100)
+  type            WalletType @default(CASH)
+  icon            String?    @db.VarChar(100)
+  color           String?    @db.VarChar(20)
+  initialBalance  Decimal    @default(0) @db.Decimal(18, 2)
+  currentBalance  Decimal    @default(0) @db.Decimal(18, 2)
+  includedInTotal Boolean    @default(true)
+  archived        Boolean    @default(false)
+  sortOrder       Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Transaction relations (3 separate FK roles)
+  transactions  Transaction[] @relation("TransactionWallet")
+  fromTransfers Transaction[] @relation("TransactionFromWallet")
+  toTransfers   Transaction[] @relation("TransactionToWallet")
+
+  // Goal relations
+  goals       Goal[]      @relation("GoalWallet")
+  goalEntries GoalEntry[] @relation("GoalEntryWallet")
+
+  // Debt relations
+  debts       Debt[]      @relation("DebtWallet")
+  debtEntries DebtEntry[] @relation("DebtEntryWallet")
+
+  // Recurring relations (3 separate FK roles)
+  recurrings     Recurring[] @relation("RecurringWallet")
+  fromRecurrings Recurring[] @relation("RecurringFromWallet")
+  toRecurrings   Recurring[] @relation("RecurringToWallet")
+
+  @@index([accountId])
+  @@index([accountId, archived])
+  @@map("wallets")
+}
+
+// ─────────────────────────────────────────────
+// CATEGORY
+// ─────────────────────────────────────────────
+
+model Category {
+  id               Int          @id @default(autoincrement())
+  accountId        Int
+  account          Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name             String       @db.VarChar(100)
+  type             CategoryType
+  icon             String?      @db.VarChar(100)
+  color            String?      @db.VarChar(20)
+  parentCategoryId Int?
+  parent           Category?    @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  children         Category[]   @relation("CategoryHierarchy")
+  description      String?      @db.VarChar(255)
+  sortOrder        Int          @default(0)
+  isDefault        Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+  recurrings   Recurring[]
+
+  @@index([accountId, type])
+  @@index([parentCategoryId])
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────
+// TRANSACTION
+// ─────────────────────────────────────────────
+
+model Transaction {
+  id           Int             @id @default(autoincrement())
+  accountId    Int
+  account      Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type         TransactionType
+  amount       Decimal         @db.Decimal(18, 2)
+  date         DateTime        @db.Date
+  time         String?         @db.VarChar(8)
+  datetime     DateTime
+  description  String?         @db.VarChar(255)
+  memo         String?         @db.Text
+  categoryId   Int?
+  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // For INCOME and EXPENSE
+  walletId Int?
+  wallet   Wallet? @relation("TransactionWallet", fields: [walletId], references: [id], onDelete: SetNull)
+
+  // For TRANSFER
+  fromWalletId Int?
+  fromWallet   Wallet? @relation("TransactionFromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWalletId   Int?
+  toWallet     Wallet? @relation("TransactionToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
+  feeAmount    Decimal @default(0) @db.Decimal(18, 2)
+
+  // Optional links
+  recurringId Int?
+  recurring   Recurring? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  debtId      Int?
+  debt        Debt?      @relation(fields: [debtId], references: [id], onDelete: SetNull)
+  goalId      Int?
+  goal        Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  attachments TransactionAttachment[]
+  goalEntry   GoalEntry?             @relation("GoalEntryTransaction")
+  debtEntry   DebtEntry?             @relation("DebtEntryTransaction")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId, date])
+  @@index([accountId, type])
+  @@index([categoryId])
+  @@index([walletId])
+  @@index([fromWalletId])
+  @@index([toWalletId])
+  @@index([date])
+  @@map("transactions")
+}
+
+// ─────────────────────────────────────────────
+// TRANSACTION ATTACHMENT (Phase 5 — schema only)
+// ─────────────────────────────────────────────
+
+model TransactionAttachment {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  fileUrl       String      @db.VarChar(500)
+  fileName      String      @db.VarChar(255)
+  mimeType      String      @db.VarChar(100)
+  createdAt     DateTime    @default(now())
+
+  @@index([transactionId])
+  @@map("transaction_attachments")
+}
+
+// ─────────────────────────────────────────────
+// BUDGET
+// ─────────────────────────────────────────────
+
+model Budget {
+  id         Int        @id @default(autoincrement())
+  accountId  Int
+  account    Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId Int
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Decimal    @db.Decimal(18, 2)
+  periodType PeriodType @default(MONTHLY)
+  startDate  DateTime   @db.Date
+  endDate    DateTime   @db.Date
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@map("budgets")
+}
+
+// ─────────────────────────────────────────────
+// GOAL
+// ─────────────────────────────────────────────
+
+model Goal {
+  id           Int      @id @default(autoincrement())
+  accountId    Int
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name         String   @db.VarChar(100)
+  targetAmount Decimal  @db.Decimal(18, 2)
+  savedAmount  Decimal  @default(0) @db.Decimal(18, 2)
+  goalDate     DateTime @db.Date
+  walletId     Int?
+  wallet       Wallet?  @relation("GoalWallet", fields: [walletId], references: [id], onDelete: SetNull)
+  icon         String?  @db.VarChar(100)
+  color        String?  @db.VarChar(20)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entries      GoalEntry[]
+  transactions Transaction[]
+
+  @@index([accountId])
+  @@map("goals")
+}
+
+// ─────────────────────────────────────────────
+// GOAL ENTRY (deposit / withdraw history)
+// ─────────────────────────────────────────────
+
+model GoalEntry {
+  id            Int           @id @default(autoincrement())
+  goalId        Int
+  goal          Goal          @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  type          GoalEntryType
+  amount        Decimal       @db.Decimal(18, 2)
+  walletId      Int?
+  wallet        Wallet?       @relation("GoalEntryWallet", fields: [walletId], references: [id], onDelete: SetNull)
+  transactionId Int?          @unique
+  transaction   Transaction?  @relation("GoalEntryTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+  date          DateTime      @db.Date
+  note          String?       @db.Text
+  createdAt     DateTime      @default(now())
+
+  @@index([goalId])
+  @@map("goal_entries")
+}
+
+// ─────────────────────────────────────────────
+// DEBT
+// ─────────────────────────────────────────────
+
+model Debt {
+  id              Int        @id @default(autoincrement())
+  accountId       Int
+  account         Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type            DebtType
+  personName      String     @db.VarChar(100)
+  description     String?    @db.VarChar(255)
+  totalAmount     Decimal    @db.Decimal(18, 2)
+  settledAmount   Decimal    @default(0) @db.Decimal(18, 2)
+  remainingAmount Decimal    @db.Decimal(18, 2)
+  walletId        Int?
+  wallet          Wallet?    @relation("DebtWallet", fields: [walletId], references: [id], onDelete: SetNull)
+  color           String?    @db.VarChar(20)
+  status          DebtStatus @default(OPEN)
+  date            DateTime   @db.Date
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  entries      DebtEntry[]
+  transactions Transaction[]
+
+  @@index([accountId, type])
+  @@index([accountId, status])
+  @@map("debts")
+}
+
+// ─────────────────────────────────────────────
+// DEBT ENTRY (payment / collection history)
+// ─────────────────────────────────────────────
+
+model DebtEntry {
+  id            Int           @id @default(autoincrement())
+  debtId        Int
+  debt          Debt          @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  type          DebtEntryType
+  amount        Decimal       @db.Decimal(18, 2)
+  walletId      Int?
+  wallet        Wallet?       @relation("DebtEntryWallet", fields: [walletId], references: [id], onDelete: SetNull)
+  transactionId Int?          @unique
+  transaction   Transaction?  @relation("DebtEntryTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+  date          DateTime      @db.Date
+  note          String?       @db.Text
+  createdAt     DateTime      @default(now())
+
+  @@index([debtId])
+  @@map("debt_entries")
+}
+
+// ─────────────────────────────────────────────
+// RECURRING
+// ─────────────────────────────────────────────
+
+model Recurring {
+  id              Int                @id @default(autoincrement())
+  accountId       Int
+  account         Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactionType TransactionType
+  amount          Decimal            @db.Decimal(18, 2)
+  description     String?            @db.VarChar(255)
+  memo            String?            @db.Text
+  categoryId      Int?
+  category        Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // For INCOME / EXPENSE recurring
+  walletId Int?
+  wallet   Wallet? @relation("RecurringWallet", fields: [walletId], references: [id], onDelete: SetNull)
+
+  // For TRANSFER recurring
+  fromWalletId Int?
+  fromWallet   Wallet? @relation("RecurringFromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWalletId   Int?
+  toWallet     Wallet? @relation("RecurringToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
+
+  frequency      RecurringFrequency
+  startDate      DateTime           @db.Date
+  nextOccurrence DateTime           @db.Date
+  endDate        DateTime?          @db.Date
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  transactions Transaction[]
+
+  @@index([accountId])
+  @@index([accountId, isActive])
+  @@map("recurrings")
+}
+
+// ─────────────────────────────────────────────
+// SETTING (per user, key-value)
+// ─────────────────────────────────────────────
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String   @db.VarChar(100)
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@map("settings")
+}
