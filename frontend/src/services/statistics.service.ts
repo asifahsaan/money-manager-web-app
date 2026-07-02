@@ -15,6 +15,7 @@ export interface TransactionItem {
   date: string;
   amount: number;
   description: string | null;
+  subcategoryName: string | null;
 }
 
 export interface CategoryBreakdownItem {

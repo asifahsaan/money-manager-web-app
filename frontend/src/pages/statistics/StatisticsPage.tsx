@@ -324,10 +324,12 @@ export function StatisticsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-gray-800 truncate">
-                        {tx.description && tx.description.trim() ? tx.description : tx.categoryName}
+                        {tx.description?.trim() || tx.subcategoryName || tx.categoryName}
                       </p>
                       <p className="text-[10px] text-gray-400 truncate">
-                        {tx.categoryName} • {format(new Date(tx.date), 'MMM d')}
+                        {tx.subcategoryName
+                          ? `${tx.categoryName} › ${tx.subcategoryName}`
+                          : tx.categoryName} • {format(new Date(tx.date), 'MMM d')}
                       </p>
                     </div>
                     <span className="text-sm font-black text-expense flex-shrink-0">
@@ -453,10 +455,12 @@ export function StatisticsPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-800 truncate">
-                            {tx.description && tx.description.trim() ? tx.description : selectedCat.name}
+                            {tx.description?.trim() || tx.subcategoryName || selectedCat.name}
                           </p>
                           <p className="text-[10px] text-gray-400">
-                            {selectedCat.name} • {format(new Date(tx.date), 'MMM d, yyyy')}
+                            {tx.subcategoryName
+                              ? `${selectedCat.name} › ${tx.subcategoryName}`
+                              : selectedCat.name} • {format(new Date(tx.date), 'MMM d, yyyy')}
                           </p>
                         </div>
                         <span className="text-sm font-black text-expense flex-shrink-0">

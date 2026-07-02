@@ -10,7 +10,7 @@ export interface CategoryGroup {
   amount: number;
   percentage: number;
   subCategories: { id: number | null; name: string; icon: string | null; color: string | null; amount: number; percentage: number }[];
-  transactions: { id: number; date: Date; amount: number; description: string | null }[];
+  transactions: { id: number; date: Date; amount: number; description: string | null; subcategoryName: string | null }[];
 }
 
 @Injectable()
@@ -111,7 +111,9 @@ export class StatisticsService {
 
       const group = parentMap.get(parentId)!;
       group.amount += amt;
-      group.transactions.push({ id: tx.id, date: tx.date, amount: amt, description: tx.description });
+      // subcategoryName = the child category name when tx belongs to a sub-category
+      const subcategoryName = parent ? (cat?.name ?? null) : null;
+      group.transactions.push({ id: tx.id, date: tx.date, amount: amt, description: tx.description, subcategoryName });
 
       // Accumulate sub-category if tx belongs to a sub-category
       if (subId !== null && subName !== null) {
