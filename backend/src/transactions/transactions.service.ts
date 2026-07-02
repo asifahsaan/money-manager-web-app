@@ -13,7 +13,7 @@ import { Transaction, TransactionType, Prisma } from '@prisma/client';
 type PrismaTx = Prisma.TransactionClient;
 
 const TRANSACTION_INCLUDE = {
-  category: true,
+  category: { include: { parent: true } },
   wallet: true,
   fromWallet: true,
   toWallet: true,

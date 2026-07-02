@@ -66,6 +66,7 @@ export interface Category {
   icon: string | null;
   color: string | null;
   parentCategoryId: number | null;
+  parent?: Category;
   description: string | null;
   sortOrder: number;
   children?: Category[];

@@ -13,16 +13,23 @@ export function TransactionItem({ transaction: tx, currency, onClick }: Props) {
   const isIncome = tx.type === 'INCOME';
   const isTransfer = tx.type === 'TRANSFER';
 
+  // Build category display: "Transportation > UOL to Office" or just "Transportation"
+  const categoryDisplay = tx.category
+    ? tx.category.parent
+      ? `${tx.category.parent.name} › ${tx.category.name}`
+      : tx.category.name
+    : null;
+
   const label =
     tx.description?.trim() ||
-    tx.category?.name ||
+    categoryDisplay ||
     (isTransfer
       ? `${tx.fromWallet?.name ?? '?'} → ${tx.toWallet?.name ?? '?'}`
       : tx.type.charAt(0) + tx.type.slice(1).toLowerCase());
 
   const meta = isTransfer
     ? `${tx.fromWallet?.name ?? '?'} → ${tx.toWallet?.name ?? '?'}`
-    : `${tx.category?.name ?? 'Uncategorized'} • ${tx.wallet?.name ?? ''}`;
+    : `${categoryDisplay ?? 'Uncategorized'} • ${tx.wallet?.name ?? ''}`;
 
   const amountDisplay = isIncome
     ? `+${formatCurrency(Number(tx.amount), currency)}`

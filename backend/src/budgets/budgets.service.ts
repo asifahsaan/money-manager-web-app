@@ -21,10 +21,18 @@ export class BudgetsService {
         const start = startDate ? new Date(startDate) : b.startDate;
         const end = endDate ? new Date(endDate) : b.endDate;
 
+        // Include subcategories so spending under e.g. "Transportation > UOL to Office"
+        // rolls up into the parent "Transportation" budget
+        const children = await this.prisma.category.findMany({
+          where: { parentCategoryId: b.categoryId },
+          select: { id: true },
+        });
+        const categoryIds = [b.categoryId, ...children.map((c) => c.id)];
+
         const agg = await this.prisma.transaction.aggregate({
           where: {
             accountId,
-            categoryId: b.categoryId,
+            categoryId: { in: categoryIds },
             type: 'EXPENSE',
             goalId: null,
             date: { gte: start, lte: end },

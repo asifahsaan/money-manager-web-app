@@ -468,7 +468,14 @@ function CategoryPicker({
           </div>
         )}
         <span className={cn('flex-1 text-left text-sm', selected ? 'text-gray-800' : 'text-gray-400')}>
-          {selected?.name ?? 'Select category'}
+          {selected
+            ? selected.parentCategoryId
+              ? (() => {
+                  const par = categories.find((c) => c.id === selected.parentCategoryId);
+                  return par ? `${par.name} › ${selected.name}` : selected.name;
+                })()
+              : selected.name
+            : 'Select category'}
         </span>
         <ChevronDown
           size={16}
