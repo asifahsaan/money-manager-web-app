@@ -137,3 +137,40 @@ First create:
 7. Phase-by-phase implementation roadmap
 
 Then stop and ask for confirmation before writing code.
+
+## Git Commit Rules
+
+After every meaningful development step, bug fix, feature, UI change, backend change, database change, or documentation update:
+
+1. Run:
+   git status
+
+2. Make sure these files are NEVER committed:
+   - .env
+   - backend/.env
+   - frontend/.env
+   - node_modules/
+   - dist/
+   - build/
+   - uploads/
+   - secrets/passwords/JWT/database URLs
+
+3. Update:
+   docs/PROJECT_PROGRESS.md
+
+4. Run checks when relevant:
+   - backend typecheck/build
+   - frontend typecheck/build
+
+5. Prepare a commit automatically with a clear message.
+
+6. Commit locally without asking if the change is safe.
+
+7. Do NOT push to GitHub unless I explicitly say:
+   "push to GitHub"
+
+Use short meaningful commit messages, for example:
+- Fix transaction date filtering
+- Improve desktop transaction layout
+- Add calendar summary endpoint
+- Update project progress documentation

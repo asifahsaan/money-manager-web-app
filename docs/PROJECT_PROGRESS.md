@@ -1,8 +1,8 @@
 # Money Manager — Project Progress
 
 ## Current Phase
-**Phase 3 — Calendar & Statistics — ✅ COMPLETE**
-**Awaiting approval to start Phase 4**
+**Phase 4 — Wallet Sub-features — ✅ COMPLETE**
+**Awaiting approval to start Phase 5**
 
 ---
 
@@ -45,61 +45,64 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 
 ---
 
-## Files Created — Phase 1
+## Phase 2: Transactions — ✅ COMPLETE
 
-### Root
-- `docker-compose.yml`
-- `.env.example`
-- `.gitignore`
-
-### Backend (`backend/`)
-- `package.json`, `tsconfig.json`, `nest-cli.json`, `.env.example`
-- `prisma/schema.prisma`
-- `src/main.ts`, `src/app.module.ts`
-- `src/prisma/prisma.service.ts`, `prisma.module.ts`
-- `src/common/filters/http-exception.filter.ts`
-- `src/common/interceptors/response.interceptor.ts`
-- `src/common/decorators/current-user.decorator.ts`
-- `src/auth/dto/register.dto.ts`, `login.dto.ts`
-- `src/auth/strategies/jwt.strategy.ts`
-- `src/auth/guards/jwt-auth.guard.ts`
-- `src/auth/auth.service.ts`, `auth.controller.ts`, `auth.module.ts`
-- `src/users/users.service.ts`, `users.module.ts`
-- `src/accounts/accounts.service.ts`, `accounts.controller.ts`, `accounts.module.ts` + DTOs
-- `src/categories/categories.service.ts`, `categories.module.ts`
-- `src/categories/seeds/default-categories.seed.ts`
-
-### Frontend (`frontend/`)
-- `package.json`, `tsconfig.json`, `tsconfig.node.json`
-- `vite.config.ts`, `tailwind.config.ts`, `postcss.config.js`, `.env.example`
-- `index.html`
-- `src/vite-env.d.ts`
-- `src/main.tsx`, `src/App.tsx`, `src/index.css`
-- `src/types/index.ts`
-- `src/lib/axios.ts`, `src/lib/utils.ts`
-- `src/stores/auth.store.ts`, `src/stores/account.store.ts`
-- `src/services/auth.service.ts`, `src/services/account.service.ts`
-- `src/layouts/AuthLayout.tsx`, `src/layouts/DashboardLayout.tsx`
-- `src/components/shared/AccountSelector.tsx`
-- `src/components/shared/Sidebar.tsx`
-- `src/components/shared/BottomNav.tsx`
-- `src/pages/auth/LoginPage.tsx`, `src/pages/auth/RegisterPage.tsx`
-- `src/pages/PlaceholderPage.tsx`
+### Completed Tasks
+- [x] Wallet CRUD (cash / bank / card / e-wallet types)
+- [x] Transaction CRUD (income / expense / transfer)
+- [x] Atomic wallet balance recalculation (`$transaction` for every change)
+- [x] Transfer: debits from-wallet, credits to-wallet, excluded from P&L
+- [x] Transaction list endpoint with filters: date range, type, category, wallet
+- [x] Pagination (offset-based) with total count
+- [x] CSV export endpoint
+- [x] Frontend: Transaction list page with filters and grouped-by-date view
+- [x] Add/Edit transaction modal with photo attachment support
+- [x] Balance display per wallet in the wallet page
 
 ---
 
-## API Endpoints (Phase 1)
+## Phase 3: Calendar & Statistics — ✅ COMPLETE
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | /api/auth/register | Public | Register, auto-create account + seed categories |
-| POST | /api/auth/login | Public | Login → JWT |
-| GET | /api/auth/me | JWT | Current user |
-| GET | /api/accounts | JWT | List user's accounts |
-| GET | /api/accounts/:id | JWT | Get account (ownership check) |
-| POST | /api/accounts | JWT | Create account |
-| PATCH | /api/accounts/:id | JWT | Update account |
-| DELETE | /api/accounts/:id | JWT | Delete account |
+### Completed Tasks
+- [x] Calendar page with monthly view
+- [x] Daily income/expense markers on calendar days
+- [x] Click day to see transactions for that date
+- [x] Statistics page with Recharts charts
+- [x] Monthly income vs expense bar chart
+- [x] Category breakdown pie/donut chart
+- [x] Period selector (week / month / year / custom)
+- [x] Fixed calendar query key to use `['calendar-transactions', ...]`
+- [x] Fixed `@Max(200)` → `@Max(1000)` on limit DTO so calendar `limit: 1000` queries work
+
+---
+
+## Phase 4: Wallet Sub-features — ✅ COMPLETE
+
+### Completed Tasks
+- [x] Budget module: create, list, delete budgets per category with spent tracking
+- [x] Saving Goals module: create goals, deposit/withdraw with wallet balance sync
+- [x] Debt Tracker: payable and receivable debts, record payments/collections
+- [x] Recurring Transactions: template-based, store next occurrence date
+- [x] Wallet page with 4 sub-tabs: Wallets | Budget | Goals | Debts | Recurring
+- [x] All sub-tab create/edit forms converted from inline panels to modal overlays
+  - BudgetTab: "New Budget" modal
+  - GoalsTab: "New Goal" modal + "Deposit/Withdraw" entry modal
+  - DebtTab: "New Debt" modal + "Record Payment/Collection" modal
+  - RecurringTab: "New Recurring" modal
+- [x] Modal pattern: `fixed inset-0 z-50` overlay with `bg-black/40` backdrop, bottom-sheet on mobile, centered on desktop
+- [x] Fixed UTC timezone bug in `buildDates` and `buildWhere` in `transactions.service.ts`
+  - `new Date(dateStr + 'T00:00:00')` (local time) → `new Date(dateStr + 'T00:00:00.000Z')` (UTC)
+  - Prevents date shifting for users in UTC+ timezones (e.g. PKT UTC+5)
+
+---
+
+## Bug Fixes Applied
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Calendar shows Rs. 0 | `@Max(200)` on limit DTO rejected `limit: 1000` with 400 | Changed to `@Max(1000)` in `query-transaction.dto.ts` |
+| Transactions created but not shown | `new Date('2026-07-01T00:00:00')` parsed as local time (PKT) → UTC date shifts to June 30 | Append `.000Z` to force UTC in `buildDates` and `buildWhere` |
+| Inline forms blocked empty state UI | Empty-state guard `budgets.length === 0 && !showForm` hid empty-state while form was modal | Removed `!showForm`/`!showCreate` guards from empty-state conditions |
 
 ---
 
@@ -134,49 +137,10 @@ npm run dev                  # http://localhost:5173
 
 ---
 
-## Test Commands (curl)
-
-```bash
-# Register
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com","password":"secret123"}'
-# Expected: { success: true, data: { token, user, defaultAccountId } }
-
-# Login
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"secret123"}'
-# Expected: { success: true, data: { token, user } }
-
-# Get me (replace <TOKEN>)
-curl http://localhost:3001/api/auth/me \
-  -H "Authorization: Bearer <TOKEN>"
-
-# List accounts
-curl http://localhost:3001/api/accounts \
-  -H "Authorization: Bearer <TOKEN>"
-# Expected: 1 default account with seeded categories
-```
-
----
-
-## Phase 2: Transactions — ⏳ AWAITING APPROVAL
-
-### Proposed Scope
-- Wallet CRUD (cash / bank / card / e-wallet types)
-- Transaction CRUD (income / expense / transfer)
-- Atomic wallet balance recalculation (`$transaction` for every change)
-- Transfer: debits from-wallet, credits to-wallet, excluded from P&L
-- Transaction list endpoint with filters: date range, type, category, wallet
-- Pagination (cursor or offset)
-- Frontend: Transaction list page, Add/Edit transaction modal/page
-
----
-
-## Phases 3–7 — Not started
-3. Calendar view
-4. Statistics & charts
-5. Budget module
-6. Goals, Debt tracker, Recurring transactions
-7. File attachments, Settings, Polish
+## Phase 5 — Proposed Scope (Awaiting Approval)
+- File/photo attachments for transactions (upload, display, delete)
+- Profile settings page (name, email, password change, currency preference)
+- App-wide currency formatting using user's preferred currency
+- Notification/reminder system for recurring transactions due
+- Dark mode support
+- PWA manifest + service worker for offline capability
