@@ -103,7 +103,9 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
   });
 
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [savedTx, setSavedTx] = useState<Transaction | undefined>(editing);
+  // Pending files selected before save (new transaction only)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: () => transactionService.delete(editing!.id),
@@ -116,8 +118,9 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
     onError: () => toast.error('Failed to delete'),
   });
 
-  const mutation = useMutation({
-    mutationFn: (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
+    setSaving(true);
+    try {
       const shared = {
         type: data.type,
         amount: Number(data.amount),
@@ -130,34 +133,26 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
         toWalletId: data.type === 'TRANSFER' ? data.toWalletId : undefined,
         feeAmount: data.feeAmount ? Number(data.feeAmount) : undefined,
       };
-      return editing
-        ? transactionService.update(editing.id, shared)
-        : transactionService.create({ ...shared, accountId });
-    },
-    onSuccess: (data) => {
+
+      const tx = editing
+        ? await transactionService.update(editing.id, shared)
+        : await transactionService.create({ ...shared, accountId });
+
+      // Upload any pending files now that we have a transaction ID
+      if (pendingFiles.length > 0) {
+        await Promise.all(pendingFiles.map((f) => attachmentService.upload(tx.id, f)));
+      }
+
       toast.success(editing ? 'Transaction updated' : 'Transaction added');
       queryClient.invalidateQueries({ queryKey: ['transactions', accountId] });
       queryClient.invalidateQueries({ queryKey: ['wallets', accountId] });
-      if (editing) {
-        onClose();
-      } else {
-        // Keep the modal open so a photo attachment can be added to the new transaction.
-        setSavedTx(data);
-      }
-    },
-    onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Something went wrong');
-    },
-  });
-
-  const onSubmit = (data: FormData) => {
-    if (!editing && savedTx) {
       onClose();
-      return;
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Something went wrong');
+    } finally {
+      setSaving(false);
     }
-    mutation.mutate(data);
   };
 
   // Reset category when type changes
@@ -340,15 +335,22 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
             />
           </div>
 
-          {/* Attachments (available once the transaction has been saved) */}
-          {savedTx && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2">
-                Photo attachment (optional)
-              </label>
-              <AttachmentsSection transactionId={savedTx.id} />
-            </div>
-          )}
+          {/* Photo attachments — always visible */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-2">
+              Photo attachment (optional)
+            </label>
+            {editing ? (
+              // Edit mode: attachments already exist on the server
+              <AttachmentsSection transactionId={editing.id} />
+            ) : (
+              // New transaction: collect files, upload on Save
+              <PendingAttachments
+                files={pendingFiles}
+                onChange={setPendingFiles}
+              />
+            )}
+          </div>
 
           {/* Delete (edit mode only) */}
           {editing && (
@@ -387,14 +389,14 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
           {/* Submit */}
           <button
             type="submit"
-            disabled={mutation.isPending}
+            disabled={saving}
             className={cn(
               'w-full py-3.5 rounded-xl font-semibold text-white transition-opacity',
-              mutation.isPending ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90',
+              saving ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90',
               activeTabStyle,
             )}
           >
-            {mutation.isPending ? 'Saving...' : editing ? 'Update' : savedTx ? 'Done' : 'Save'}
+            {saving ? 'Saving...' : editing ? 'Update' : 'Save'}
           </button>
         </form>
       </div>
@@ -890,6 +892,55 @@ function AttachmentsSection({ transactionId }: { transactionId: number }) {
           accept="image/jpeg,image/png,image/webp,image/gif"
           className="hidden"
           onChange={handleFileChange}
+        />
+      </label>
+    </div>
+  );
+}
+
+// ─── Pending Attachments (new transaction, files queued before save) ──────────
+
+function PendingAttachments({
+  files,
+  onChange,
+}: {
+  files: File[];
+  onChange: (files: File[]) => void;
+}) {
+  const previews = files.map((f) => URL.createObjectURL(f));
+
+  function handleAdd(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) onChange([...files, file]);
+    e.target.value = '';
+  }
+
+  function handleRemove(index: number) {
+    onChange(files.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {previews.map((src, i) => (
+        <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 group">
+          <img src={src} className="w-full h-full object-cover" />
+          <button
+            type="button"
+            onClick={() => handleRemove(i)}
+            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X size={10} />
+          </button>
+        </div>
+      ))}
+      <label className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary-400 transition-colors">
+        <Paperclip size={16} className="text-gray-400" />
+        <span className="text-[9px] text-gray-400">Add</span>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleAdd}
         />
       </label>
     </div>
