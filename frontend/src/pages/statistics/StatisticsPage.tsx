@@ -115,6 +115,7 @@ export function StatisticsPage() {
   const [selectedCatColor, setSelectedCatColor] = useState<string>('#EF4444');
   const [modalTab, setModalTab] = useState<'transactions' | 'groups'>('transactions');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [donutFilter, setDonutFilter] = useState<{ id: number | null; name: string; color: string } | null>(null);
   const [showDonutExpense, setShowDonutExpense] = useState(true);
   const [showDonutIncome, setShowDonutIncome] = useState(true);
 
@@ -153,7 +154,10 @@ export function StatisticsPage() {
 
   const topSpending: RichTx[] = useMemo(() => {
     if (!summary) return [];
-    return summary.expenseBreakdown
+    const cats = donutFilter
+      ? summary.expenseBreakdown.filter((c) => c.id === donutFilter.id)
+      : summary.expenseBreakdown;
+    return cats
       .flatMap((cat) => cat.transactions.map((tx) => ({
         ...tx,
         categoryName: cat.name,
@@ -162,17 +166,21 @@ export function StatisticsPage() {
       })))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [summary]);
+  }, [summary, donutFilter]);
 
   const weeklyData = useMemo(() => {
-    if (!summary) return [
+    const empty = [
       { day: 'Mon', amount: 0 }, { day: 'Tue', amount: 0 }, { day: 'Wed', amount: 0 },
       { day: 'Thu', amount: 0 }, { day: 'Fri', amount: 0 }, { day: 'Sat', amount: 0 }, { day: 'Sun', amount: 0 },
     ];
-    const txs = summary.expenseBreakdown.flatMap((cat) => cat.transactions);
+    if (!summary) return empty;
+    const cats = donutFilter
+      ? summary.expenseBreakdown.filter((c) => c.id === donutFilter.id)
+      : summary.expenseBreakdown;
+    const txs = cats.flatMap((cat) => cat.transactions);
     const totals: number[] = new Array(7).fill(0);
     txs.forEach((tx) => {
-      const d = new Date(tx.date).getDay(); // 0=Sun
+      const d = new Date(tx.date).getDay();
       totals[d] += tx.amount;
     });
     return [
@@ -181,7 +189,7 @@ export function StatisticsPage() {
       { day: 'Fri', amount: totals[5] }, { day: 'Sat', amount: totals[6] },
       { day: 'Sun', amount: totals[0] },
     ];
-  }, [summary]);
+  }, [summary, donutFilter]);
 
   const trendData = trend.map((t) => ({
     month: t.month.substring(5),
@@ -293,6 +301,8 @@ export function StatisticsPage() {
           showDonut={showDonutExpense}
           onToggleDonut={() => setShowDonutExpense((v) => !v)}
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
+          donutFilter={donutFilter}
+          onDonutClick={(id, name, color) => setDonutFilter((f) => f?.id === id ? null : { id, name, color })}
         />
         <StructurePanel
           title="Income Structure"
@@ -303,6 +313,8 @@ export function StatisticsPage() {
           showDonut={showDonutIncome}
           onToggleDonut={() => setShowDonutIncome((v) => !v)}
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
+          donutFilter={null}
+          onDonutClick={() => {}}
         />
       </div>
 
@@ -310,7 +322,18 @@ export function StatisticsPage() {
       <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
         {/* Top 5 Spending */}
         <div className="glass-card p-4">
-          <p className="text-sm font-bold text-gray-800 mb-3">Top 5 Spending</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-gray-800">Top 5 Spending</p>
+            {donutFilter && (
+              <button
+                onClick={() => setDonutFilter(null)}
+                className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-white"
+                style={{ backgroundColor: donutFilter.color }}
+              >
+                {donutFilter.name} <X size={10} />
+              </button>
+            )}
+          </div>
           {topSpending.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">No expense data</p>
           ) : (
@@ -347,7 +370,9 @@ export function StatisticsPage() {
         {/* Weekly Spending */}
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-gray-800">Weekly Spending</p>
+            <p className="text-sm font-bold text-gray-800">
+              Weekly Spending{donutFilter ? ` — ${donutFilter.name}` : ''}
+            </p>
             <span className="text-[10px] text-gray-400">Mon–Sun</span>
           </div>
           <ResponsiveContainer width="100%" height={130}>
@@ -568,7 +593,7 @@ export function StatisticsPage() {
 
 /* ─── Structure Panel (Expense or Income) ─── */
 function StructurePanel({
-  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat,
+  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat, donutFilter, onDonutClick,
 }: {
   title: string;
   type: 'expense' | 'income';
@@ -578,6 +603,8 @@ function StructurePanel({
   showDonut: boolean;
   onToggleDonut: () => void;
   onClickCat: (cat: CategoryBreakdownItem, color: string) => void;
+  donutFilter: { id: number | null; name: string; color: string } | null;
+  onDonutClick: (id: number | null, name: string, color: string) => void;
 }) {
   const pieData = breakdown.slice(0, 8).map((c, i) => ({
     name: c.name,
@@ -607,9 +634,17 @@ function StructurePanel({
             <div className="relative flex-shrink-0">
               <PieChart width={130} height={130}>
                 <Pie data={pieData} cx={65} cy={65} innerRadius={40} outerRadius={58}
-                  paddingAngle={2} dataKey="value" strokeWidth={0}>
+                  paddingAngle={2} dataKey="value" strokeWidth={0}
+                  cursor="pointer"
+                  onClick={(entry) => onDonutClick(entry.id, entry.name, entry.color)}>
                   {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+                    <Cell
+                      key={i}
+                      fill={entry.color}
+                      opacity={donutFilter && donutFilter.id !== entry.id ? 0.3 : 1}
+                      stroke={donutFilter?.id === entry.id ? '#fff' : 'none'}
+                      strokeWidth={donutFilter?.id === entry.id ? 2 : 0}
+                    />
                   ))}
                 </Pie>
               </PieChart>
@@ -627,9 +662,10 @@ function StructurePanel({
             {breakdown.map((cat, i) => {
               const color = cat.color ?? DONUT_COLORS[i % DONUT_COLORS.length];
               const Icon = resolveIcon(cat.icon);
+              const dimmed = donutFilter && donutFilter.id !== cat.id;
               return (
                 <button key={`${cat.id}-${i}`} onClick={() => onClickCat(cat, color)}
-                  className="w-full flex items-center gap-2 py-1.5 rounded-lg px-1 hover:bg-gray-50 transition-colors">
+                  className={cn('w-full flex items-center gap-2 py-1.5 rounded-lg px-1 hover:bg-gray-50 transition-all', dimmed && 'opacity-30')}>
                   {/* Color indicator */}
                   <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                   {/* Icon */}
