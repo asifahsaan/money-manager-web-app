@@ -113,6 +113,8 @@ export function StatisticsPage() {
   const [customEnd, setCustomEnd] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedCat, setSelectedCat] = useState<CategoryBreakdownItem | null>(null);
   const [selectedCatColor, setSelectedCatColor] = useState<string>('#EF4444');
+  const [modalTab, setModalTab] = useState<'transactions' | 'groups'>('transactions');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showDonutExpense, setShowDonutExpense] = useState(true);
   const [showDonutIncome, setShowDonutIncome] = useState(true);
 
@@ -290,7 +292,7 @@ export function StatisticsPage() {
           currency={currency}
           showDonut={showDonutExpense}
           onToggleDonut={() => setShowDonutExpense((v) => !v)}
-          onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); }}
+          onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
         />
         <StructurePanel
           title="Income Structure"
@@ -300,7 +302,7 @@ export function StatisticsPage() {
           currency={currency}
           showDonut={showDonutIncome}
           onToggleDonut={() => setShowDonutIncome((v) => !v)}
-          onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); }}
+          onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
         />
       </div>
 
@@ -436,11 +438,25 @@ export function StatisticsPage() {
               </div>
             </div>
 
-            {/* Transaction list */}
+            {/* Tab switcher */}
+            <div className="flex gap-1 px-5 pb-3 shrink-0">
+              {(['transactions', 'groups'] as const).map((t) => (
+                <button key={t} onClick={() => { setModalTab(t); setExpandedGroups(new Set()); }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all capitalize',
+                    modalTab === t ? 'text-amber-800 shadow-sm' : 'text-gray-400 hover:text-gray-600',
+                  )}
+                  style={modalTab === t ? { background: 'linear-gradient(135deg,#fef3c7,#fffbeb)', boxShadow: '0 4px 12px rgba(251,191,36,.18)' } : {}}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Transaction list / Groups list */}
             <div className="overflow-y-auto flex-1 px-5 pb-5">
               {selectedCat.transactions.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">No transactions</p>
-              ) : (
+              ) : modalTab === 'transactions' ? (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                     Transactions in {selectedCat.name}
@@ -470,6 +486,77 @@ export function StatisticsPage() {
                     );
                   })}
                 </div>
+              ) : (
+                /* ── Groups view ── */
+                (() => {
+                  // Group by: subcategoryName → description → category name (as fallback label)
+                  const groupMap = new Map<string, { label: string; total: number; count: number; txs: typeof selectedCat.transactions }>();
+                  for (const tx of selectedCat.transactions) {
+                    const key = tx.subcategoryName || tx.description?.trim() || selectedCat.name;
+                    if (!groupMap.has(key)) groupMap.set(key, { label: key, total: 0, count: 0, txs: [] });
+                    const g = groupMap.get(key)!;
+                    g.total += tx.amount;
+                    g.count += 1;
+                    g.txs.push(tx);
+                  }
+                  const groups = Array.from(groupMap.values()).sort((a, b) => b.total - a.total);
+                  const Icon = resolveIcon(selectedCat.icon);
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        {groups.length} group{groups.length !== 1 ? 's' : ''} in {selectedCat.name}
+                      </p>
+                      {groups.map((g) => {
+                        const isOpen = expandedGroups.has(g.label);
+                        return (
+                          <div key={g.label} className="rounded-xl overflow-hidden border border-gray-100">
+                            {/* Group header */}
+                            <button
+                              className="w-full flex items-center gap-3 bg-gray-50 px-3 py-2.5 hover:bg-gray-100 transition-colors"
+                              onClick={() => setExpandedGroups((prev) => {
+                                const next = new Set(prev);
+                                isOpen ? next.delete(g.label) : next.add(g.label);
+                                return next;
+                              })}
+                            >
+                              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{ backgroundColor: selectedCatColor, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.08)' }}>
+                                <Icon size={13} color="white" />
+                              </div>
+                              <div className="flex-1 text-left min-w-0">
+                                <p className="text-xs font-bold text-gray-800 truncate">{g.label}</p>
+                                <p className="text-[10px] text-gray-400">{g.count} transaction{g.count !== 1 ? 's' : ''}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-black text-expense">-{formatCurrency(g.total, currency)}</p>
+                                <p className="text-[10px] text-gray-400">{isOpen ? '▲' : '▼'}</p>
+                              </div>
+                            </button>
+                            {/* Expanded transactions */}
+                            {isOpen && (
+                              <div className="divide-y divide-gray-50">
+                                {g.txs.map((tx) => (
+                                  <div key={tx.id} className="flex items-center gap-3 bg-white px-3 py-2">
+                                    <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: selectedCatColor }} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[11px] font-semibold text-gray-700 truncate">
+                                        {tx.description?.trim() || tx.subcategoryName || selectedCat.name}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400">{format(new Date(tx.date), 'MMM d, yyyy')}</p>
+                                    </div>
+                                    <span className="text-xs font-bold text-expense flex-shrink-0">
+                                      -{formatCurrency(tx.amount, currency)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               )}
             </div>
           </div>
