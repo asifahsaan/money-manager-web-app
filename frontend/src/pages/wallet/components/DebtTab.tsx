@@ -301,6 +301,35 @@ export function DebtTab() {
         </div>
       )}
 
+      {/* ── Delete confirmation modal ── */}
+      {confirmDelete !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete(null)} />
+          <div className="relative bg-white w-full max-w-xs rounded-2xl shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <X size={22} className="text-red-500" />
+            </div>
+            <h3 className="font-bold text-gray-800 text-sm mb-1">Delete Debt?</h3>
+            <p className="text-xs text-gray-400 mb-5">This will permanently remove the debt record. This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(confirmDelete)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 transition-colors"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Pay/Collect modal ── */}
       {payingDebt && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
@@ -376,8 +405,7 @@ export function DebtTab() {
                     onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
                     onEdit={() => openEdit(d)}
-                    onDelete={() => confirmDelete === d.id ? deleteMutation.mutate(d.id) : setConfirmDelete(d.id)}
-                    deleteLabel={confirmDelete === d.id ? 'Confirm?' : undefined}
+                    onDelete={() => setConfirmDelete(d.id)}
                   />
                 ))}
               </div>
@@ -398,8 +426,7 @@ export function DebtTab() {
                     onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
                     onEdit={() => openEdit(d)}
-                    onDelete={() => confirmDelete === d.id ? deleteMutation.mutate(d.id) : setConfirmDelete(d.id)}
-                    deleteLabel={confirmDelete === d.id ? 'Confirm?' : undefined}
+                    onDelete={() => setConfirmDelete(d.id)}
                   />
                 ))}
               </div>
@@ -411,7 +438,7 @@ export function DebtTab() {
   );
 }
 
-function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDelete, deleteLabel }: {
+function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDelete }: {
   debt: Debt;
   currency: string;
   expanded: boolean;
@@ -419,7 +446,6 @@ function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDele
   onPay: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  deleteLabel?: string;
 }) {
   const pct = Number(d.totalAmount) > 0 ? (Number(d.settledAmount) / Number(d.totalAmount)) * 100 : 0;
   const isPayable = d.type === 'PAYABLE';
@@ -488,12 +514,9 @@ function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDele
             </button>
             <button
               onClick={onDelete}
-              className={cn(
-                'px-3 py-1.5 rounded-xl text-xs transition-colors font-medium',
-                deleteLabel ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-              )}
+              className="px-3 py-1.5 rounded-xl text-xs transition-colors font-medium text-gray-400 hover:text-red-500 hover:bg-red-50"
             >
-              {deleteLabel ?? 'Delete'}
+              Delete
             </button>
           </div>
         </div>
