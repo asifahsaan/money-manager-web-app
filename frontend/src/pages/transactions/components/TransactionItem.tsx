@@ -20,8 +20,11 @@ export function TransactionItem({ transaction: tx, currency, onClick }: Props) {
       : tx.category.name
     : null;
 
+  // Title: description → subcategory name only → full category display → fallback
+  const subName = tx.category?.parent ? tx.category.name : null;
   const label =
     tx.description?.trim() ||
+    subName ||
     categoryDisplay ||
     (isTransfer
       ? `${tx.fromWallet?.name ?? '?'} → ${tx.toWallet?.name ?? '?'}`
