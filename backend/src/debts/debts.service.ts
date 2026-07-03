@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
+import { DebtStatus } from '@prisma/client';
 
 @Injectable()
 export class DebtsService {
@@ -91,12 +92,12 @@ export class DebtsService {
     // Recalculate remaining if totalAmount changes
     let totalAmount: number | undefined;
     let remainingAmount: number | undefined;
-    let status: string | undefined;
+    let status: DebtStatus | undefined;
     if (dto.totalAmount !== undefined) {
       totalAmount = dto.totalAmount;
       const settled = Number(debt.settledAmount);
       remainingAmount = Math.max(0, totalAmount - settled);
-      status = remainingAmount <= 0 ? 'CLOSED' : settled > 0 ? 'PARTIAL' : 'OPEN';
+      status = remainingAmount <= 0 ? DebtStatus.CLOSED : settled > 0 ? DebtStatus.PARTIAL : DebtStatus.OPEN;
     }
 
     return this.prisma.debt.update({
