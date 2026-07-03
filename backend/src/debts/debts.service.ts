@@ -87,6 +87,18 @@ export class DebtsService {
 
   async update(id: number, userId: number, dto: UpdateDebtDto) {
     const debt = await this.findAndVerify(id, userId);
+
+    // Recalculate remaining if totalAmount changes
+    let totalAmount: number | undefined;
+    let remainingAmount: number | undefined;
+    let status: string | undefined;
+    if (dto.totalAmount !== undefined) {
+      totalAmount = dto.totalAmount;
+      const settled = Number(debt.settledAmount);
+      remainingAmount = Math.max(0, totalAmount - settled);
+      status = remainingAmount <= 0 ? 'CLOSED' : settled > 0 ? 'PARTIAL' : 'OPEN';
+    }
+
     return this.prisma.debt.update({
       where: { id: debt.id },
       data: {
@@ -94,6 +106,7 @@ export class DebtsService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.color !== undefined && { color: dto.color }),
         ...(dto.date && { date: new Date(dto.date) }),
+        ...(totalAmount !== undefined && { totalAmount, remainingAmount, status }),
       },
     });
   }

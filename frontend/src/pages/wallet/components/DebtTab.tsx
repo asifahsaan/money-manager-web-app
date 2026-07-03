@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, X, User } from 'lucide-react';
+import { Plus, X, User, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
@@ -24,6 +24,14 @@ const createSchema = z.object({
   date: z.string().min(1),
 });
 
+const editSchema = z.object({
+  personName: z.string().min(1, 'Name required'),
+  description: z.string().optional(),
+  totalAmount: z.string().refine((v) => Number(v) > 0, 'Must be > 0'),
+  color: z.string().optional(),
+  date: z.string().min(1),
+});
+
 const paySchema = z.object({
   amount: z.string().refine((v) => Number(v) > 0),
   walletId: z.string().min(1, 'Wallet required'),
@@ -32,6 +40,7 @@ const paySchema = z.object({
 });
 
 type CreateFormData = z.infer<typeof createSchema>;
+type EditFormData = z.infer<typeof editSchema>;
 type PayFormData = z.infer<typeof paySchema>;
 
 const DEBT_COLORS = ['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EC4899'];
@@ -42,8 +51,10 @@ export function DebtTab() {
   const currency = activeAccount?.currency ?? 'Rs.';
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payingDebt, setPayingDebt] = useState<Debt | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ['debts', accountId],
@@ -62,12 +73,17 @@ export function DebtTab() {
     defaultValues: { type: 'PAYABLE', date: today, color: DEBT_COLORS[0] },
   });
 
+  const { register: regE, handleSubmit: hsE, reset: resetE, watch: watchE, setValue: setValE, formState: { errors: errE } } = useForm<EditFormData>({
+    resolver: zodResolver(editSchema),
+  });
+
   const { register: regP, handleSubmit: hsP, reset: resetP, formState: { errors: errP } } = useForm<PayFormData>({
     resolver: zodResolver(paySchema),
     defaultValues: { date: today },
   });
 
   const selectedColor = watchC('color');
+  const selectedEditColor = watchE('color');
 
   const createMutation = useMutation({
     mutationFn: (data: CreateFormData) =>
@@ -88,6 +104,23 @@ export function DebtTab() {
       resetC();
     },
     onError: () => toast.error('Failed to create debt'),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: (data: EditFormData) =>
+      debtService.update(editingDebt!.id, {
+        personName: data.personName,
+        description: data.description,
+        totalAmount: Number(data.totalAmount),
+        color: data.color,
+        date: data.date,
+      }),
+    onSuccess: () => {
+      toast.success('Debt updated');
+      qc.invalidateQueries({ queryKey: ['debts', accountId] });
+      setEditingDebt(null);
+    },
+    onError: () => toast.error('Failed to update debt'),
   });
 
   const payMutation = useMutation({
@@ -112,8 +145,20 @@ export function DebtTab() {
       toast.success('Debt deleted');
       qc.invalidateQueries({ queryKey: ['debts', accountId] });
       setConfirmDelete(null);
+      setExpandedId(null);
     },
   });
+
+  function openEdit(d: Debt) {
+    setEditingDebt(d);
+    resetE({
+      personName: d.personName,
+      description: d.description ?? '',
+      totalAmount: String(Number(d.totalAmount)),
+      color: d.color ?? DEBT_COLORS[0],
+      date: format(new Date(d.date), 'yyyy-MM-dd'),
+    });
+  }
 
   if (!accountId) return null;
 
@@ -134,16 +179,14 @@ export function DebtTab() {
         </button>
       </div>
 
-      {/* Create modal */}
+      {/* ── Create modal ── */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCreate(false)} />
           <div className="relative bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <span className="font-bold text-sm text-gray-800">New Debt</span>
-              <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg hover:bg-gray-100">
-                <X size={15} className="text-gray-400" />
-              </button>
+              <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg hover:bg-gray-100"><X size={15} className="text-gray-400" /></button>
             </div>
             <form onSubmit={hsC((d) => createMutation.mutate(d))} className="p-5 space-y-3">
               <div>
@@ -162,25 +205,21 @@ export function DebtTab() {
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Person Name</label>
-                <input {...regC('personName')} placeholder="Name…"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                <input {...regC('personName')} placeholder="Name…" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 {errC.personName && <p className="text-expense text-xs">{errC.personName.message}</p>}
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Description (optional)</label>
-                <input {...regC('description')} placeholder="What for?"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                <input {...regC('description')} placeholder="What for?" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Amount</label>
-                  <input type="number" step="0.01" {...regC('totalAmount')} placeholder="0.00"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  <input type="number" step="0.01" {...regC('totalAmount')} placeholder="0.00" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Date</label>
-                  <input type="date" {...regC('date')}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  <input type="date" {...regC('date')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
               </div>
               <div>
@@ -212,7 +251,57 @@ export function DebtTab() {
         </div>
       )}
 
-      {/* Pay/Collect modal */}
+      {/* ── Edit modal ── */}
+      {editingDebt && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setEditingDebt(null)} />
+          <div className="relative bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <span className="font-bold text-sm text-gray-800">Edit Debt</span>
+              <button onClick={() => setEditingDebt(null)} className="p-1 rounded-lg hover:bg-gray-100"><X size={15} className="text-gray-400" /></button>
+            </div>
+            <form onSubmit={hsE((d) => editMutation.mutate(d))} className="p-5 space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Person Name</label>
+                <input {...regE('personName')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                {errE.personName && <p className="text-expense text-xs">{errE.personName.message}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Description (optional)</label>
+                <input {...regE('description')} placeholder="What for?" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Total Amount</label>
+                  <input type="number" step="0.01" {...regE('totalAmount')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  {errE.totalAmount && <p className="text-expense text-xs">{errE.totalAmount.message}</p>}
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Date</label>
+                  <input type="date" {...regE('date')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Color</label>
+                <div className="flex gap-2">
+                  {DEBT_COLORS.map((c) => (
+                    <button key={c} type="button" onClick={() => setValE('color', c)}
+                      className="w-7 h-7 rounded-full border-2 transition-all"
+                      style={{ backgroundColor: c, borderColor: selectedEditColor === c ? '#000' : 'transparent' }} />
+                  ))}
+                </div>
+              </div>
+              <button type="submit" disabled={editMutation.isPending}
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                {editMutation.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pay/Collect modal ── */}
       {payingDebt && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setPayingDebt(null)} />
@@ -224,9 +313,7 @@ export function DebtTab() {
                 </span>
                 <p className="text-xs text-gray-400 mt-0.5">Remaining: {formatCurrency(Number(payingDebt.remainingAmount), currency)}</p>
               </div>
-              <button onClick={() => setPayingDebt(null)} className="p-1 rounded-lg hover:bg-gray-100">
-                <X size={15} className="text-gray-400" />
-              </button>
+              <button onClick={() => setPayingDebt(null)} className="p-1 rounded-lg hover:bg-gray-100"><X size={15} className="text-gray-400" /></button>
             </div>
             <form onSubmit={hsP((d) => payMutation.mutate(d))} className="p-5 space-y-3">
               <div>
@@ -246,13 +333,11 @@ export function DebtTab() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Date</label>
-                  <input type="date" {...regP('date')}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  <input type="date" {...regP('date')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Note</label>
-                  <input {...regP('note')} placeholder="Optional note"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  <input {...regP('note')} placeholder="Optional note" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
               </div>
               <button type="submit" disabled={payMutation.isPending}
@@ -276,19 +361,21 @@ export function DebtTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Payable section panel */}
           <div className="glass-card p-4">
             <p className="text-sm font-bold text-expense mb-3 pb-2 border-b border-gray-100">Payable</p>
             {payable.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-4">No payable debts</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {payable.map((d) => (
                   <DebtCard
                     key={d.id}
                     debt={d}
                     currency={currency}
+                    expanded={expandedId === d.id}
+                    onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
+                    onEdit={() => openEdit(d)}
                     onDelete={() => confirmDelete === d.id ? deleteMutation.mutate(d.id) : setConfirmDelete(d.id)}
                     deleteLabel={confirmDelete === d.id ? 'Confirm?' : undefined}
                   />
@@ -296,19 +383,21 @@ export function DebtTab() {
               </div>
             )}
           </div>
-          {/* Receivable section panel */}
           <div className="glass-card p-4">
             <p className="text-sm font-bold text-income mb-3 pb-2 border-b border-gray-100">Receivable</p>
             {receivable.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-4">No receivable debts</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {receivable.map((d) => (
                   <DebtCard
                     key={d.id}
                     debt={d}
                     currency={currency}
+                    expanded={expandedId === d.id}
+                    onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
+                    onEdit={() => openEdit(d)}
                     onDelete={() => confirmDelete === d.id ? deleteMutation.mutate(d.id) : setConfirmDelete(d.id)}
                     deleteLabel={confirmDelete === d.id ? 'Confirm?' : undefined}
                   />
@@ -322,8 +411,15 @@ export function DebtTab() {
   );
 }
 
-function DebtCard({ debt: d, currency, onPay, onDelete, deleteLabel }: {
-  debt: Debt; currency: string; onPay: () => void; onDelete: () => void; deleteLabel?: string;
+function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDelete, deleteLabel }: {
+  debt: Debt;
+  currency: string;
+  expanded: boolean;
+  onToggle: () => void;
+  onPay: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleteLabel?: string;
 }) {
   const pct = Number(d.totalAmount) > 0 ? (Number(d.settledAmount) / Number(d.totalAmount)) * 100 : 0;
   const isPayable = d.type === 'PAYABLE';
@@ -331,64 +427,77 @@ function DebtCard({ debt: d, currency, onPay, onDelete, deleteLabel }: {
   const nameColor = isPayable ? '#EF4444' : '#3B82F6';
 
   return (
-    <div className="bg-white/60 rounded-xl p-3 border border-white/80">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: d.color ?? barColor, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.1)' }}
-          >
-            <User size={14} color="white" />
-          </div>
-          <p className="font-bold text-sm" style={{ color: nameColor }}>{d.personName}</p>
-        </div>
-        <span className={cn(
-          'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-          d.status === 'CLOSED' ? 'bg-green-50 text-green-600' :
-          d.status === 'PARTIAL' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-500',
-        )}>
-          {d.status.toLowerCase()}
-        </span>
-      </div>
-
-      {d.description && <p className="text-[10px] text-gray-400 pl-10 mb-1">{d.description}</p>}
-
-      <p className="text-sm font-black pl-10 mb-2" style={{ color: barColor }}>
-        {formatCurrency(Number(d.remainingAmount), currency)}
-        <span className="text-[10px] font-normal text-gray-400 ml-1">
-          remaining of {formatCurrency(Number(d.totalAmount), currency)}
-        </span>
-      </p>
-
-      {/* Progress bar */}
-      <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3 overflow-hidden">
+    <div className="bg-white/60 rounded-xl border border-white/80 overflow-hidden">
+      {/* Clickable summary row */}
+      <button className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/40 transition-colors" onClick={onToggle}>
         <div
-          className="h-1.5 rounded-full transition-all"
-          style={{ width: `${Math.min(100, pct)}%`, backgroundColor: barColor }}
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        {d.status !== 'CLOSED' && (
-          <button
-            onClick={onPay}
-            className="flex items-center px-4 py-1.5 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
-            style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', boxShadow: '0 4px 12px rgba(217,119,6,0.2)' }}
-          >
-            {isPayable ? 'Pay' : 'Collect'}
-          </button>
-        )}
-        <button
-          onClick={onDelete}
-          className={cn(
-            'px-3 py-1.5 rounded-xl text-xs transition-colors font-medium',
-            deleteLabel ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-          )}
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: d.color ?? barColor, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.1)' }}
         >
-          {deleteLabel ?? 'Delete'}
-        </button>
-      </div>
+          <User size={14} color="white" />
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="font-bold text-sm truncate" style={{ color: nameColor }}>{d.personName}</p>
+            <span className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0',
+              d.status === 'CLOSED' ? 'bg-green-50 text-green-600' :
+              d.status === 'PARTIAL' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-500',
+            )}>
+              {d.status.toLowerCase()}
+            </span>
+          </div>
+          {d.description && <p className="text-[10px] text-gray-400 truncate">{d.description}</p>}
+        </div>
+        <div className="text-right flex-shrink-0 mr-1">
+          <p className="text-sm font-black" style={{ color: barColor }}>
+            {formatCurrency(Number(d.remainingAmount), currency)}
+          </p>
+          <p className="text-[10px] text-gray-400">of {formatCurrency(Number(d.totalAmount), currency)}</p>
+        </div>
+        {expanded ? <ChevronUp size={14} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />}
+      </button>
+
+      {/* Expanded: progress + actions */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-gray-100/60">
+          {/* Progress bar */}
+          <div className="w-full bg-gray-100 rounded-full h-1.5 my-2.5 overflow-hidden">
+            <div
+              className="h-1.5 rounded-full transition-all"
+              style={{ width: `${Math.min(100, pct)}%`, backgroundColor: barColor }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 mb-2.5">{pct.toFixed(0)}% settled • {formatCurrency(Number(d.settledAmount), currency)} paid</p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {d.status !== 'CLOSED' && (
+              <button
+                onClick={onPay}
+                className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', boxShadow: '0 4px 12px rgba(217,119,6,0.2)' }}
+              >
+                {isPayable ? 'Pay' : 'Collect'}
+              </button>
+            )}
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              <Pencil size={11} /> Edit
+            </button>
+            <button
+              onClick={onDelete}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs transition-colors font-medium',
+                deleteLabel ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50',
+              )}
+            >
+              {deleteLabel ?? 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

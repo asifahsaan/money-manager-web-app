@@ -6,4 +6,5 @@ export class UpdateDebtDto {
   @IsOptional() @IsString() @MaxLength(255) description?: string;
   @IsOptional() @IsString() @MaxLength(20) color?: string;
   @IsOptional() @IsDateString() date?: string;
+  @IsOptional() @IsNumber() @Type(() => Number) @Min(0) totalAmount?: number;
 }
