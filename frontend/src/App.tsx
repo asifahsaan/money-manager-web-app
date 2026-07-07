@@ -13,6 +13,7 @@ import { CalendarPage } from '@/pages/calendar/CalendarPage';
 import { StatisticsPage } from '@/pages/statistics/StatisticsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { useAuthStore } from '@/stores/auth.store';
+import { AdminPage } from '@/pages/admin/AdminPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ const router = createBrowserRouter([
       { path: '/settings', element: <SettingsPage /> },
     ],
   },
+  { path: '/admin', element: <AdminPage /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 

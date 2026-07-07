@@ -60,6 +60,12 @@ enum DebtEntryType {
   COLLECTION
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
 enum RecurringFrequency {
   DAILY
   WEEKLY
@@ -78,6 +84,8 @@ model User {
   email           String    @unique @db.VarChar(150)
   passwordHash    String    @db.VarChar(255)
   defaultCurrency String    @default("Rs.") @db.VarChar(10)
+  role            UserRole  @default(USER)
+  isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

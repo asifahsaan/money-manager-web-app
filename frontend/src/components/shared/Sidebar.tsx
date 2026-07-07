@@ -7,6 +7,7 @@ import {
   LogOut,
   Settings,
   TrendingUp,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -103,6 +104,22 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             <p className="text-xs font-semibold text-gray-700 truncate">{user.name}</p>
             <p className="text-xs text-gray-400 truncate">{user.email}</p>
           </div>
+        )}
+
+        {user && (user.role === 'ADMIN' || user.role === 'SUPERADMIN') && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm transition-all duration-150',
+                isActive ? 'nav-item-active' : 'nav-item-inactive',
+                collapsed && 'justify-center px-2',
+              )
+            }
+          >
+            <Shield size={18} className="flex-shrink-0" />
+            {!collapsed && <span>Admin</span>}
+          </NavLink>
         )}
 
         <NavLink

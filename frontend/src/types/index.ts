@@ -7,6 +7,8 @@ export interface User {
   name: string;
   email: string;
   defaultCurrency: string;
+  role: 'USER' | 'ADMIN' | 'SUPERADMIN';
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
