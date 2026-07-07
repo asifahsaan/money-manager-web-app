@@ -17,9 +17,11 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL
-      ? [process.env.FRONTEND_URL, /^http:\/\/localhost:\d+$/]
-      : /^http:\/\/localhost:\d+$/,
+    origin: [
+      /^http:\/\/localhost:\d+$/,
+      'https://money-manager-web-app.vercel.app',
+      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    ],
     credentials: true,
   });
 
