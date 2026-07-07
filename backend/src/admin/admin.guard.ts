@@ -7,7 +7,7 @@ export class AdminGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
-    const userId = req.user?.userId;
+    const userId = req.user?.sub ?? req.user?.userId;
     if (!userId) throw new ForbiddenException('Not authenticated');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, isActive: true } });
