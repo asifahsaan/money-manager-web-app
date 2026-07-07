@@ -4,6 +4,7 @@ import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorato
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeEmailDto } from './dto/change-email.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -19,5 +20,10 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: JwtUser) {
     return this.usersService.changePassword(user.sub, dto.currentPassword, dto.newPassword);
+  }
+
+  @Post('me/change-email')
+  changeEmail(@Body() dto: ChangeEmailDto, @CurrentUser() user: JwtUser) {
+    return this.usersService.changeEmail(user.sub, dto.newEmail, dto.password);
   }
 }

@@ -32,6 +32,20 @@ export class UsersService {
     await this.prisma.user.update({ where: { id }, data: { passwordHash } });
   }
 
+  async changeEmail(id: number, newEmail: string, password: string): Promise<Omit<User, 'passwordHash'>> {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const matches = await bcrypt.compare(password, user.passwordHash);
+    if (!matches) throw new BadRequestException('Password is incorrect');
+
+    const existing = await this.prisma.user.findUnique({ where: { email: newEmail } });
+    if (existing) throw new BadRequestException('Email is already in use');
+
+    const updated = await this.prisma.user.update({ where: { id }, data: { email: newEmail } });
+    return this.sanitize(updated);
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }

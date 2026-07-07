@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { LogOut, User as UserIcon, Lock, Wallet } from 'lucide-react';
+import { LogOut, User as UserIcon, Lock, Wallet, Mail } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
 import { userService } from '@/services/user.service';
@@ -14,6 +14,11 @@ const CURRENCIES = ['Rs.', '$', '€', '£', '₹', '¥', 'AED', 'SAR'];
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+});
+
+const emailSchema = z.object({
+  newEmail: z.string().email('Enter a valid email'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 const passwordSchema = z
@@ -28,6 +33,7 @@ const passwordSchema = z
   });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
+type EmailFormData = z.infer<typeof emailSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export function SettingsPage() {
@@ -48,6 +54,15 @@ export function SettingsPage() {
   });
 
   const {
+    register: regE,
+    handleSubmit: hsE,
+    reset: resetE,
+    formState: { errors: errE },
+  } = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+  });
+
+  const {
     register: regPw,
     handleSubmit: hsPw,
     reset: resetPw,
@@ -63,6 +78,19 @@ export function SettingsPage() {
       toast.success('Profile updated');
     },
     onError: () => toast.error('Failed to update profile'),
+  });
+
+  const emailMutation = useMutation({
+    mutationFn: (data: EmailFormData) => userService.changeEmail(data.newEmail, data.password),
+    onSuccess: (updated) => {
+      if (token) setAuth(updated, token);
+      toast.success('Email updated');
+      resetE();
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Failed to update email');
+    },
   });
 
   const currencyMutation = useMutation({
@@ -127,6 +155,43 @@ export function SettingsPage() {
             className="w-full bg-primary-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50"
           >
             {profileMutation.isPending ? 'Saving…' : 'Save Profile'}
+          </button>
+        </form>
+      </section>
+
+      {/* Change Email */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <Mail size={16} /> Change Email
+        </div>
+        <p className="text-xs text-gray-400">Current: <span className="font-medium text-gray-600">{user?.email}</span></p>
+        <form onSubmit={hsE((d) => emailMutation.mutate(d))} className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">New Email</label>
+            <input
+              type="email"
+              {...regE('newEmail')}
+              placeholder="new@example.com"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+            />
+            {errE.newEmail && <p className="text-red-500 text-xs mt-1">{errE.newEmail.message}</p>}
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Confirm with Password</label>
+            <input
+              type="password"
+              {...regE('password')}
+              placeholder="Your current password"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+            />
+            {errE.password && <p className="text-red-500 text-xs mt-1">{errE.password.message}</p>}
+          </div>
+          <button
+            type="submit"
+            disabled={emailMutation.isPending}
+            className="w-full bg-primary-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {emailMutation.isPending ? 'Updating…' : 'Update Email'}
           </button>
         </form>
       </section>
