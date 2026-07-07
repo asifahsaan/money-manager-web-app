@@ -1,6 +1,6 @@
 import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards, ParseIntPipe, Request } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from './admin.guard';
 import { SuperAdminGuard } from './superadmin.guard';
 import { UserRole } from '@prisma/client';
