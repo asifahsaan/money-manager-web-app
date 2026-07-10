@@ -414,6 +414,7 @@ export function DebtTab() {
                     key={d.id}
                     debt={d}
                     currency={currency}
+                    wallets={wallets}
                     expanded={expandedId === d.id}
                     onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
@@ -435,6 +436,7 @@ export function DebtTab() {
                     key={d.id}
                     debt={d}
                     currency={currency}
+                    wallets={wallets}
                     expanded={expandedId === d.id}
                     onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     onPay={() => { setPayingDebt(d); resetP(); }}
@@ -451,9 +453,10 @@ export function DebtTab() {
   );
 }
 
-function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDelete }: {
+function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete }: {
   debt: Debt;
   currency: string;
+  wallets: { id: number; name: string }[];
   expanded: boolean;
   onToggle: () => void;
   onPay: () => void;
@@ -507,7 +510,15 @@ function DebtCard({ debt: d, currency, expanded, onToggle, onPay, onEdit, onDele
               style={{ width: `${Math.min(100, pct)}%`, backgroundColor: barColor }}
             />
           </div>
-          <p className="text-[10px] text-gray-400 mb-2.5">{pct.toFixed(0)}% settled • {formatCurrency(Number(d.settledAmount), currency)} paid</p>
+          <p className="text-[10px] text-gray-400 mb-1.5">{pct.toFixed(0)}% settled • {formatCurrency(Number(d.settledAmount), currency)} paid</p>
+          {d.walletId && (
+            <p className="text-[10px] text-gray-400 mb-2.5">
+              {d.type === 'PAYABLE' ? 'Paid from' : 'Received in'}:{' '}
+              <span className="font-semibold text-gray-500">
+                {wallets.find((w) => w.id === d.walletId)?.name ?? 'Unknown wallet'}
+              </span>
+            </p>
+          )}
 
           <div className="flex items-center gap-2 flex-wrap">
             {d.status !== 'CLOSED' && (
