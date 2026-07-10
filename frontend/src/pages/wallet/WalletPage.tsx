@@ -62,29 +62,49 @@ export function WalletPage() {
   const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>(
     (initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring') ?? 'wallets'
   );
-  const [allStatsHidden, setAllStatsHidden] = useState(false);
-  const [hiddenStats, setHiddenStats] = useState<Set<string>>(new Set());
-  const [hiddenWalletIds, setHiddenWalletIds] = useState<Set<number>>(new Set());
+  const [allStatsHidden, setAllStatsHidden] = useState(() => localStorage.getItem('mm_wp_stats_all') === 'true');
+  const [hiddenStats, setHiddenStats] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem('mm_wp_stats') ?? '[]')); } catch { return new Set(); }
+  });
+  const [allWalletsHidden, setAllWalletsHidden] = useState(() => localStorage.getItem('mm_wp_wallets_all') === 'true');
+  const [hiddenWalletIds, setHiddenWalletIds] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('mm_wp_wallets') ?? '[]')); } catch { return new Set(); }
+  });
 
   function toggleStat(key: string) {
     setHiddenStats((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('mm_wp_stats', JSON.stringify([...next]));
       return next;
     });
   }
   function isStatHidden(key: string) { return allStatsHidden || hiddenStats.has(key); }
   function toggleAllStats() {
-    setAllStatsHidden((h) => !h);
+    setAllStatsHidden((h) => {
+      localStorage.setItem('mm_wp_stats_all', String(!h));
+      return !h;
+    });
     setHiddenStats(new Set());
+    localStorage.setItem('mm_wp_stats', '[]');
+  }
+  function toggleAllWallets() {
+    setAllWalletsHidden((h) => {
+      localStorage.setItem('mm_wp_wallets_all', String(!h));
+      return !h;
+    });
+    setHiddenWalletIds(new Set());
+    localStorage.setItem('mm_wp_wallets', '[]');
   }
   function toggleWallet(id: number) {
     setHiddenWalletIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('mm_wp_wallets', JSON.stringify([...next]));
       return next;
     });
   }
+  function isWalletHidden(id: number) { return allWalletsHidden || hiddenWalletIds.has(id); }
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -308,10 +328,19 @@ export function WalletPage() {
         <div className="flex-1 overflow-y-auto px-4 pb-6">
           {/* Tab header */}
           <div className="flex items-center justify-between py-3">
-            <p className="text-xs text-gray-400 font-medium">
-              {wallets.filter((w) => w.includedInTotal && !w.archived).length} wallets included
-              {' · '}transfers excluded from profit/loss
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-400 font-medium">
+                {wallets.filter((w) => w.includedInTotal && !w.archived).length} wallets included
+                {' · '}transfers excluded from profit/loss
+              </p>
+              <button
+                onClick={toggleAllWallets}
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+                title={allWalletsHidden ? 'Show balances' : 'Hide balances'}
+              >
+                {allWalletsHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+            </div>
             <button
               onClick={openAdd}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
@@ -376,7 +405,7 @@ export function WalletPage() {
                           onClick={(e) => { e.stopPropagation(); toggleWallet(w.id); }}
                           className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors"
                         >
-                          {hiddenWalletIds.has(w.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                          {isWalletHidden(w.id) ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                         <button
                           type="button"
@@ -393,7 +422,7 @@ export function WalletPage() {
 
                     {/* Balance */}
                     <p className={cn('text-2xl font-black mb-3', balance >= 0 ? 'text-income' : 'text-expense')}>
-                      {hiddenWalletIds.has(w.id) ? '••••' : formatCurrency(balance, currency)}
+                      {isWalletHidden(w.id) ? '••••' : formatCurrency(balance, currency)}
                     </p>
 
                     {/* Badges */}

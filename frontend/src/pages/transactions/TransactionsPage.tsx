@@ -62,22 +62,34 @@ export function TransactionsPage() {
   const [filterWalletId, setFilterWalletId] = useState<string>('');
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
-  const [allStatsHidden, setAllStatsHidden] = useState(false);
-  const [walletSummaryHidden, setWalletSummaryHidden] = useState(false);
-  const [hiddenStats, setHiddenStats] = useState<Set<string>>(new Set());
+  const [allStatsHidden, setAllStatsHidden] = useState(() => localStorage.getItem('mm_tx_stats_all') === 'true');
+  const [walletSummaryHidden, setWalletSummaryHidden] = useState(() => localStorage.getItem('mm_tx_wallet_hidden') === 'true');
+  const [hiddenStats, setHiddenStats] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem('mm_tx_stats') ?? '[]')); } catch { return new Set(); }
+  });
 
   function toggleStat(key: string) {
     setHiddenStats((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem('mm_tx_stats', JSON.stringify([...next]));
       return next;
     });
   }
   function isStatHidden(key: string) { return allStatsHidden || hiddenStats.has(key); }
   function toggleAllStats() {
-    setAllStatsHidden((h) => !h);
+    setAllStatsHidden((h) => {
+      localStorage.setItem('mm_tx_stats_all', String(!h));
+      return !h;
+    });
     setHiddenStats(new Set());
+    localStorage.setItem('mm_tx_stats', '[]');
   }
+
+  const _setWalletSummaryHidden = (v: boolean) => {
+    localStorage.setItem('mm_tx_wallet_hidden', String(v));
+    setWalletSummaryHidden(v);
+  };
 
   const activeAccountObj = useAccountStore((s) => s.activeAccount());
   const currency = activeAccountObj?.currency ?? 'Rs.';
@@ -515,7 +527,7 @@ export function TransactionsPage() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-black text-gray-800">Wallet Summary</p>
                   <button
-                    onClick={() => setWalletSummaryHidden((h) => !h)}
+                    onClick={() => _setWalletSummaryHidden(!walletSummaryHidden)}
                     className="text-gray-300 hover:text-gray-500 transition-colors"
                     title={walletSummaryHidden ? 'Show balances' : 'Hide balances'}
                   >
