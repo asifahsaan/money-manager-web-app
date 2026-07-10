@@ -511,14 +511,28 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
             />
           </div>
           <p className="text-[10px] text-gray-400 mb-1.5">{pct.toFixed(0)}% settled • {formatCurrency(Number(d.settledAmount), currency)} paid</p>
-          {d.walletId && (
-            <p className="text-[10px] text-gray-400 mb-2.5">
-              {d.type === 'PAYABLE' ? 'Paid from' : 'Received in'}:{' '}
-              <span className="font-semibold text-gray-500">
-                {wallets.find((w) => w.id === d.walletId)?.name ?? 'Unknown wallet'}
-              </span>
-            </p>
-          )}
+          {(() => {
+            const linkedWallet = d.walletId ? wallets.find((w) => w.id === d.walletId)?.name : null;
+            const entryWalletIds = [...new Set((d.entries ?? []).map((e) => e.walletId).filter(Boolean) as number[])];
+            const entryWalletNames = entryWalletIds.map((id) => wallets.find((w) => w.id === id)?.name).filter(Boolean).join(', ');
+            return (
+              <>
+                {linkedWallet && (
+                  <p className="text-[10px] text-gray-400">
+                    {d.type === 'PAYABLE' ? 'Borrowed into' : 'Lent from'}:{' '}
+                    <span className="font-semibold text-gray-500">{linkedWallet}</span>
+                  </p>
+                )}
+                {entryWalletNames && (
+                  <p className="text-[10px] text-gray-400">
+                    {d.type === 'PAYABLE' ? 'Paid from' : 'Collected in'}:{' '}
+                    <span className="font-semibold text-gray-500">{entryWalletNames}</span>
+                  </p>
+                )}
+                {(linkedWallet || entryWalletNames) && <div className="mb-2.5" />}
+              </>
+            );
+          })()}
 
           <div className="flex items-center gap-2 flex-wrap">
             {d.status !== 'CLOSED' && (
