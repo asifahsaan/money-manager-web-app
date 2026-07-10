@@ -19,7 +19,7 @@ const createSchema = z.object({
   personName: z.string().min(1, 'Name required'),
   description: z.string().optional(),
   totalAmount: z.string().refine((v) => Number(v) > 0),
-  walletId: z.string().optional(),
+  walletId: z.string().min(1, 'Please select a wallet.'),
   color: z.string().optional(),
   date: z.string().min(1),
 });
@@ -227,12 +227,13 @@ export function DebtTab() {
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">
-                  {watchC('type') === 'PAYABLE' ? 'Pay from Wallet (optional)' : 'Receive to Wallet (optional)'}
+                  {watchC('type') === 'PAYABLE' ? 'Receive to Wallet' : 'Pay from Wallet'}
                 </label>
                 <select {...regC('walletId')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
                   <option value="">Select wallet</option>
                   {wallets.map((w) => <option key={w.id} value={w.id}>{w.name} ({formatCurrency(Number(w.currentBalance), currency)})</option>)}
                 </select>
+                {errC.walletId && <p className="text-expense text-xs mt-1">{errC.walletId.message}</p>}
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Color</label>
@@ -286,7 +287,7 @@ export function DebtTab() {
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">
-                  {editingDebt?.type === 'PAYABLE' ? 'Pay from Wallet' : 'Receive to Wallet'}
+                  {editingDebt?.type === 'PAYABLE' ? 'Received in Wallet' : 'Paid from Wallet'}
                   <span className="text-gray-400 font-normal"> (optional)</span>
                 </label>
                 <select {...regE('walletId')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
@@ -519,7 +520,7 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
               <>
                 {linkedWallet && (
                   <p className="text-[10px] text-gray-400">
-                    {d.type === 'PAYABLE' ? 'Borrowed into' : 'Lent from'}:{' '}
+                    {d.type === 'PAYABLE' ? 'Received in' : 'Paid from'}:{' '}
                     <span className="font-semibold text-gray-500">{linkedWallet}</span>
                   </p>
                 )}
