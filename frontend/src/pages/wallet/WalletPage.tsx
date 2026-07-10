@@ -16,6 +16,8 @@ import {
   Banknote,
   Smartphone,
   Pencil,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { walletService } from '@/services/wallet.service';
@@ -55,6 +57,29 @@ export function WalletPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>('wallets');
+  const [allStatsHidden, setAllStatsHidden] = useState(false);
+  const [hiddenStats, setHiddenStats] = useState<Set<string>>(new Set());
+  const [hiddenWalletIds, setHiddenWalletIds] = useState<Set<number>>(new Set());
+
+  function toggleStat(key: string) {
+    setHiddenStats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  function isStatHidden(key: string) { return allStatsHidden || hiddenStats.has(key); }
+  function toggleAllStats() {
+    setAllStatsHidden((h) => !h);
+    setHiddenStats(new Set());
+  }
+  function toggleWallet(id: number) {
+    setHiddenWalletIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -182,30 +207,66 @@ export function WalletPage() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Summary stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 pt-4 pb-2">
-        <div className="stat-card">
-          <p className="text-[11px] text-gray-400 font-medium mb-1">Total Balance</p>
-          <p className={cn('text-lg font-black', totalBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
-            {formatCurrency(totalBalance, currency)}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-1">Included wallets only</p>
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Summary</p>
+          <button
+            onClick={toggleAllStats}
+            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {allStatsHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            <span>{allStatsHidden ? 'Show all' : 'Hide all'}</span>
+          </button>
         </div>
-        <div className="stat-card">
-          <p className="text-[11px] text-gray-400 font-medium mb-1">Income This Month</p>
-          <p className="text-lg font-black text-income">{formatCurrency(monthIncome, currency)}</p>
-          <p className="text-[10px] text-gray-400 mt-1">Transfers excluded</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-[11px] text-gray-400 font-medium mb-1">Expense This Month</p>
-          <p className="text-lg font-black text-expense">{formatCurrency(monthExpense, currency)}</p>
-          <p className="text-[10px] text-gray-400 mt-1">Budgets use expenses only</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-[11px] text-gray-400 font-medium mb-1">Net Total</p>
-          <p className={cn('text-lg font-black', netTotal >= 0 ? 'text-success' : 'text-expense')}>
-            {formatCurrency(netTotal, currency)}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-1">Income minus expense</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="stat-card flex items-start justify-between">
+            <div>
+              <p className="text-[11px] text-gray-400 font-medium mb-1">Total Balance</p>
+              <p className={cn('text-lg font-black', totalBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
+                {isStatHidden('balance') ? '••••' : formatCurrency(totalBalance, currency)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1">Included wallets only</p>
+            </div>
+            <button onClick={() => toggleStat('balance')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
+              {isStatHidden('balance') ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
+          </div>
+          <div className="stat-card flex items-start justify-between">
+            <div>
+              <p className="text-[11px] text-gray-400 font-medium mb-1">Income This Month</p>
+              <p className="text-lg font-black text-income">
+                {isStatHidden('income') ? '••••' : formatCurrency(monthIncome, currency)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1">Transfers excluded</p>
+            </div>
+            <button onClick={() => toggleStat('income')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
+              {isStatHidden('income') ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
+          </div>
+          <div className="stat-card flex items-start justify-between">
+            <div>
+              <p className="text-[11px] text-gray-400 font-medium mb-1">Expense This Month</p>
+              <p className="text-lg font-black text-expense">
+                {isStatHidden('expense') ? '••••' : formatCurrency(monthExpense, currency)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1">Budgets use expenses only</p>
+            </div>
+            <button onClick={() => toggleStat('expense')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
+              {isStatHidden('expense') ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
+          </div>
+          <div className="stat-card flex items-start justify-between">
+            <div>
+              <p className="text-[11px] text-gray-400 font-medium mb-1">Net Total</p>
+              <p className={cn('text-lg font-black', netTotal >= 0 ? 'text-success' : 'text-expense')}>
+                {isStatHidden('net') ? '••••' : formatCurrency(netTotal, currency)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1">Income minus expense</p>
+            </div>
+            <button onClick={() => toggleStat('net')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
+              {isStatHidden('net') ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -307,6 +368,13 @@ export function WalletPage() {
                         </button>
                         <button
                           type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleWallet(w.id); }}
+                          className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors"
+                        >
+                          {hiddenWalletIds.has(w.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button
+                          type="button"
                           onClick={(e) => openEdit(w, e)}
                           className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors"
                         >
@@ -320,7 +388,7 @@ export function WalletPage() {
 
                     {/* Balance */}
                     <p className={cn('text-2xl font-black mb-3', balance >= 0 ? 'text-income' : 'text-expense')}>
-                      {formatCurrency(balance, currency)}
+                      {hiddenWalletIds.has(w.id) ? '••••' : formatCurrency(balance, currency)}
                     </p>
 
                     {/* Badges */}
