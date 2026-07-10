@@ -31,6 +31,10 @@ export class DebtsService {
     await this.verifyOwnership(dto.accountId, userId);
     const txDate = new Date(dto.date + 'T00:00:00');
 
+    const categoryId = dto.walletId
+      ? await this.findDebtCategory(dto.accountId, dto.type === 'RECEIVABLE' ? 'Loan' : 'Debt collection')
+      : null;
+
     return this.prisma.$transaction(async (tx) => {
       const debt = await tx.debt.create({
         data: {
@@ -67,6 +71,7 @@ export class DebtsService {
             date: txDate,
             datetime: txDate,
             debtId: debt.id,
+            categoryId,
           },
         });
 
@@ -121,8 +126,13 @@ export class DebtsService {
     const remaining = Number(debt.remainingAmount);
     if (amount > remaining) throw new BadRequestException(`Amount exceeds remaining: ${remaining}`);
 
+    // PAYABLE: paying back → EXPENSE ("Loan"); RECEIVABLE: collecting → INCOME ("Debt collection")
+    const payCategoryId = await this.findDebtCategory(
+      debt.accountId,
+      debt.type === 'PAYABLE' ? 'Loan' : 'Debt collection',
+    );
+
     return this.prisma.$transaction(async (tx) => {
-      // PAYABLE: we pay money → EXPENSE; RECEIVABLE: we collect → INCOME
       const txType = debt.type === 'PAYABLE' ? 'EXPENSE' : 'INCOME';
 
       const txDate = new Date(dto.date + 'T00:00:00');
@@ -136,6 +146,7 @@ export class DebtsService {
           date: txDate,
           datetime: txDate,
           debtId: id,
+          categoryId: payCategoryId,
         },
       });
 
@@ -219,6 +230,11 @@ export class DebtsService {
   async delete(id: number, userId: number) {
     const debt = await this.findAndVerify(id, userId);
     await this.prisma.debt.delete({ where: { id: debt.id } });
+  }
+
+  private async findDebtCategory(accountId: number, name: string) {
+    const cat = await this.prisma.category.findFirst({ where: { accountId, name } });
+    return cat?.id ?? null;
   }
 
   private async findAndVerify(id: number, userId: number) {
