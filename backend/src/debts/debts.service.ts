@@ -108,6 +108,7 @@ export class DebtsService {
         ...(dto.color !== undefined && { color: dto.color }),
         ...(dto.date && { date: new Date(dto.date) }),
         ...(totalAmount !== undefined && { totalAmount, remainingAmount, status }),
+        ...(dto.walletId !== undefined && { walletId: dto.walletId }),
       },
     });
   }

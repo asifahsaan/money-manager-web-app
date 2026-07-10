@@ -28,6 +28,7 @@ const editSchema = z.object({
   personName: z.string().min(1, 'Name required'),
   description: z.string().optional(),
   totalAmount: z.string().refine((v) => Number(v) > 0, 'Must be > 0'),
+  walletId: z.string().optional(),
   color: z.string().optional(),
   date: z.string().min(1),
 });
@@ -112,6 +113,7 @@ export function DebtTab() {
         personName: data.personName,
         description: data.description,
         totalAmount: Number(data.totalAmount),
+        walletId: data.walletId ? Number(data.walletId) : null,
         color: data.color,
         date: data.date,
       }),
@@ -155,6 +157,7 @@ export function DebtTab() {
       personName: d.personName,
       description: d.description ?? '',
       totalAmount: String(Number(d.totalAmount)),
+      walletId: d.walletId ? String(d.walletId) : '',
       color: d.color ?? DEBT_COLORS[0],
       date: format(new Date(d.date), 'yyyy-MM-dd'),
     });
@@ -280,6 +283,16 @@ export function DebtTab() {
                   <label className="text-xs text-gray-500 mb-1 block">Date</label>
                   <input type="date" {...regE('date')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">
+                  {editingDebt?.type === 'PAYABLE' ? 'Pay from Wallet' : 'Receive to Wallet'}
+                  <span className="text-gray-400 font-normal"> (optional)</span>
+                </label>
+                <select {...regE('walletId')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
+                  <option value="">No wallet</option>
+                  {wallets.map((w) => <option key={w.id} value={w.id}>{w.name} ({formatCurrency(Number(w.currentBalance), currency)})</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Color</label>
