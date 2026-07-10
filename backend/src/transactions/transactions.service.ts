@@ -26,7 +26,10 @@ export class TransactionsService {
   private buildWhere(query: QueryTransactionDto): Prisma.TransactionWhereInput {
     const where: Prisma.TransactionWhereInput = {
       accountId: query.accountId,
-      NOT: { description: 'Opening Balance' },
+      OR: [
+        { description: { not: 'Opening Balance' } },
+        { description: null },
+      ],
     };
 
     if (query.type) where.type = query.type;
