@@ -20,6 +20,8 @@ coverage/
 uploads/
 
 *.log
+*.txt
+*.docx
 .DS_Store
 Thumbs.db
 
