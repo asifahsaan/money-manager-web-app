@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAccountStore } from '@/stores/account.store';
 import { walletService } from '@/services/wallet.service';
 import { statisticsService } from '@/services/statistics.service';
@@ -56,7 +57,11 @@ export function WalletPage() {
   const activeAccount = useAccountStore((s) => s.activeAccount());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>('wallets');
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get('tab');
+  const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>(
+    (initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring') ?? 'wallets'
+  );
   const [allStatsHidden, setAllStatsHidden] = useState(false);
   const [hiddenStats, setHiddenStats] = useState<Set<string>>(new Set());
   const [hiddenWalletIds, setHiddenWalletIds] = useState<Set<number>>(new Set());

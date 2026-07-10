@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Download, X, Wallet, Eye, EyeOff } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useAccountStore } from '@/stores/account.store';
 import { transactionService } from '@/services/transaction.service';
 import { walletService } from '@/services/wallet.service';
@@ -59,8 +60,10 @@ export function TransactionsPage() {
   const [filterType, setFilterType] = useState<TransactionType | ''>('');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('');
   const [filterWalletId, setFilterWalletId] = useState<string>('');
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [allStatsHidden, setAllStatsHidden] = useState(false);
+  const [walletSummaryHidden, setWalletSummaryHidden] = useState(false);
   const [hiddenStats, setHiddenStats] = useState<Set<string>>(new Set());
 
   function toggleStat(key: string) {
@@ -509,10 +512,22 @@ export function TransactionsPage() {
             {/* Wallet Summary */}
             <div className="bg-white/90 border border-gray-200 rounded-[22px] shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-black text-gray-800">Wallet Summary</p>
-                <span className="text-xs font-black text-amber-600 cursor-pointer hover:underline">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-gray-800">Wallet Summary</p>
+                  <button
+                    onClick={() => setWalletSummaryHidden((h) => !h)}
+                    className="text-gray-300 hover:text-gray-500 transition-colors"
+                    title={walletSummaryHidden ? 'Show balances' : 'Hide balances'}
+                  >
+                    {walletSummaryHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <button
+                  onClick={() => navigate('/wallet')}
+                  className="text-xs font-black text-amber-600 hover:underline"
+                >
                   View all
-                </span>
+                </button>
               </div>
               <div className="space-y-2.5">
                 {wallets.filter((w) => !w.archived).slice(0, 4).map((w) => (
@@ -527,7 +542,7 @@ export function TransactionsPage() {
                       </p>
                     </div>
                     <p className="text-xs font-black text-gray-800 flex-shrink-0">
-                      {formatCurrency(Number(w.currentBalance), currency)}
+                      {walletSummaryHidden ? '••••' : formatCurrency(Number(w.currentBalance), currency)}
                     </p>
                   </div>
                 ))}
@@ -570,9 +585,12 @@ export function TransactionsPage() {
               <div className="bg-white/90 border border-gray-200 rounded-[22px] shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-black text-gray-800">Budget Progress</p>
-                  <span className="text-xs font-black text-amber-600 cursor-pointer hover:underline">
+                  <button
+                    onClick={() => navigate('/wallet?tab=budget')}
+                    className="text-xs font-black text-amber-600 hover:underline"
+                  >
                     Manage
-                  </span>
+                  </button>
                 </div>
                 <div className="space-y-3">
                   {budgets.slice(0, 4).map((b) => {
