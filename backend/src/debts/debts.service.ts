@@ -84,7 +84,7 @@ export class DebtsService {
       }
 
       return debt;
-    });
+    }, { timeout: 20000 });
   }
 
   async update(id: number, userId: number, dto: UpdateDebtDto) {
@@ -168,7 +168,7 @@ export class DebtsService {
       });
 
       return tx.debt.findUnique({ where: { id: debt.id }, include: { entries: { orderBy: { date: 'desc' }, take: 5 } } });
-    });
+    }, { timeout: 20000 });
   }
 
   async updateEntry(debtId: number, entryId: number, userId: number, dto: UpdateDebtEntryDto) {
@@ -182,7 +182,7 @@ export class DebtsService {
     return this.prisma.$transaction(async (tx) => {
       if (walletChanged && entry.transactionId) {
         const oldTx = await tx.transaction.findUnique({ where: { id: entry.transactionId } });
-        if (oldTx) {
+        if (oldTx && oldTx.walletId) {
           // Reverse old wallet balance
           if (oldTx.type === 'INCOME') {
             await tx.wallet.update({ where: { id: oldTx.walletId }, data: { currentBalance: { decrement: oldTx.amount } } });
@@ -213,7 +213,7 @@ export class DebtsService {
         where: { id: debt.id },
         include: { entries: { orderBy: { date: 'desc' }, take: 5 } },
       });
-    });
+    }, { timeout: 20000 });
   }
 
   async delete(id: number, userId: number) {
