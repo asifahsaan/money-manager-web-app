@@ -113,6 +113,8 @@ export function DebtTab() {
     onSuccess: () => {
       toast.success('Debt created');
       qc.invalidateQueries({ queryKey: ['debts', accountId] });
+      qc.invalidateQueries({ queryKey: ['wallets', accountId] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       setShowCreate(false);
       resetC();
     },
