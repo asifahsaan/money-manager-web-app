@@ -208,8 +208,28 @@ export class TransactionsService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.reverseBalance(tx, existing);
+
+      // If this transaction is linked to a debt entry, reverse the debt too
+      if (existing.debtId) {
+        const entry = await tx.debtEntry.findFirst({ where: { transactionId: id } });
+        if (entry) {
+          const debt = await tx.debt.findUnique({ where: { id: existing.debtId } });
+          if (debt) {
+            const entryAmount = Number(entry.amount);
+            const newSettled = Math.max(0, Number(debt.settledAmount) - entryAmount);
+            const newRemaining = Number(debt.totalAmount) - newSettled;
+            const newStatus = newRemaining <= 0 ? 'CLOSED' : newSettled > 0 ? 'PARTIAL' : 'OPEN';
+            await tx.debt.update({
+              where: { id: debt.id },
+              data: { settledAmount: newSettled, remainingAmount: newRemaining, status: newStatus },
+            });
+          }
+          await tx.debtEntry.delete({ where: { id: entry.id } });
+        }
+      }
+
       await tx.transaction.delete({ where: { id } });
-    });
+    }, { timeout: 20000 });
   }
 
   // ─── Balance helpers ───────────────────────────────────────────────────────
