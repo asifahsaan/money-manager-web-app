@@ -8,6 +8,7 @@ import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorato
 import { DebtsService } from './debts.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
+import { UpdateDebtEntryDto } from './dto/update-debt-entry.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -38,6 +39,16 @@ export class DebtsController {
   @Post(':id/pay')
   pay(@Param('id', ParseIntPipe) id: number, @Body() dto: DebtPaymentDto, @CurrentUser() user: JwtUser) {
     return this.debtsService.pay(id, user.sub, dto);
+  }
+
+  @Patch(':id/entries/:entryId')
+  updateEntry(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('entryId', ParseIntPipe) entryId: number,
+    @Body() dto: UpdateDebtEntryDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.debtsService.updateEntry(id, entryId, user.sub, dto);
   }
 
   @Delete(':id')

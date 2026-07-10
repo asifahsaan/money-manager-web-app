@@ -24,5 +24,8 @@ export const debtService = {
   pay: (id: number, data: { amount: number; walletId: number; date: string; note?: string }) =>
     apiClient.post<ApiResponse<Debt>>(`/debts/${id}/pay`, data).then((r) => r.data.data),
 
+  updateEntry: (debtId: number, entryId: number, data: { walletId?: number; note?: string; date?: string }) =>
+    apiClient.patch<ApiResponse<Debt>>(`/debts/${debtId}/entries/${entryId}`, data).then((r) => r.data.data),
+
   delete: (id: number) => apiClient.delete(`/debts/${id}`).then((r) => r.data),
 };

@@ -33,6 +33,12 @@ const editSchema = z.object({
   date: z.string().min(1),
 });
 
+const entryEditSchema = z.object({
+  walletId: z.string().min(1, 'Please select a wallet.'),
+  note: z.string().optional(),
+  date: z.string().min(1),
+});
+
 const paySchema = z.object({
   amount: z.string().refine((v) => Number(v) > 0),
   walletId: z.string().min(1, 'Wallet required'),
@@ -42,6 +48,7 @@ const paySchema = z.object({
 
 type CreateFormData = z.infer<typeof createSchema>;
 type EditFormData = z.infer<typeof editSchema>;
+type EntryEditFormData = z.infer<typeof entryEditSchema>;
 type PayFormData = z.infer<typeof paySchema>;
 
 const DEBT_COLORS = ['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EC4899'];
@@ -54,6 +61,7 @@ export function DebtTab() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payingDebt, setPayingDebt] = useState<Debt | null>(null);
+  const [editingEntry, setEditingEntry] = useState<{ debtId: number; entry: NonNullable<Debt['entries']>[0] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -81,6 +89,10 @@ export function DebtTab() {
   const { register: regP, handleSubmit: hsP, reset: resetP, formState: { errors: errP } } = useForm<PayFormData>({
     resolver: zodResolver(paySchema),
     defaultValues: { date: today },
+  });
+
+  const { register: regEE, handleSubmit: hsEE, reset: resetEE, formState: { errors: errEE } } = useForm<EntryEditFormData>({
+    resolver: zodResolver(entryEditSchema),
   });
 
   const selectedColor = watchC('color');
@@ -141,6 +153,22 @@ export function DebtTab() {
     },
   });
 
+  const entryEditMutation = useMutation({
+    mutationFn: (data: EntryEditFormData) =>
+      debtService.updateEntry(editingEntry!.debtId, editingEntry!.entry.id, {
+        walletId: Number(data.walletId),
+        note: data.note,
+        date: data.date,
+      }),
+    onSuccess: () => {
+      toast.success('Entry updated');
+      qc.invalidateQueries({ queryKey: ['debts', accountId] });
+      qc.invalidateQueries({ queryKey: ['wallets', accountId] });
+      setEditingEntry(null);
+    },
+    onError: () => toast.error('Failed to update entry'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => debtService.delete(id),
     onSuccess: () => {
@@ -160,6 +188,15 @@ export function DebtTab() {
       walletId: d.walletId ? String(d.walletId) : '',
       color: d.color ?? DEBT_COLORS[0],
       date: format(new Date(d.date), 'yyyy-MM-dd'),
+    });
+  }
+
+  function openEntryEdit(debtId: number, entry: NonNullable<Debt['entries']>[0]) {
+    setEditingEntry({ debtId, entry });
+    resetEE({
+      walletId: entry.walletId ? String(entry.walletId) : '',
+      note: entry.note ?? '',
+      date: format(new Date(entry.date), 'yyyy-MM-dd'),
     });
   }
 
@@ -393,6 +430,45 @@ export function DebtTab() {
         </div>
       )}
 
+      {/* ── Entry Edit modal ── */}
+      {editingEntry && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setEditingEntry(null)} />
+          <div className="relative bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <span className="font-bold text-sm text-gray-800">Edit Entry</span>
+                <p className="text-xs text-gray-400 mt-0.5 capitalize">{editingEntry.entry.type.toLowerCase()} · {formatCurrency(Number(editingEntry.entry.amount), currency)}</p>
+              </div>
+              <button onClick={() => setEditingEntry(null)} className="p-1 rounded-lg hover:bg-gray-100"><X size={15} className="text-gray-400" /></button>
+            </div>
+            <form onSubmit={hsEE((d) => entryEditMutation.mutate(d))} className="p-5 space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Wallet</label>
+                <select {...regEE('walletId')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
+                  <option value="">Select wallet</option>
+                  {wallets.map((w) => <option key={w.id} value={w.id}>{w.name} ({formatCurrency(Number(w.currentBalance), currency)})</option>)}
+                </select>
+                {errEE.walletId && <p className="text-expense text-xs mt-1">{errEE.walletId.message}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Date</label>
+                <input type="date" {...regEE('date')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Note (optional)</label>
+                <input {...regEE('note')} placeholder="Optional note" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+              </div>
+              <button type="submit" disabled={entryEditMutation.isPending}
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                {entryEditMutation.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
       ) : debts.length === 0 ? (
@@ -421,6 +497,7 @@ export function DebtTab() {
                     onPay={() => { setPayingDebt(d); resetP(); }}
                     onEdit={() => openEdit(d)}
                     onDelete={() => setConfirmDelete(d.id)}
+                    onEditEntry={(entry) => openEntryEdit(d.id, entry)}
                   />
                 ))}
               </div>
@@ -443,6 +520,7 @@ export function DebtTab() {
                     onPay={() => { setPayingDebt(d); resetP(); }}
                     onEdit={() => openEdit(d)}
                     onDelete={() => setConfirmDelete(d.id)}
+                    onEditEntry={(entry) => openEntryEdit(d.id, entry)}
                   />
                 ))}
               </div>
@@ -454,7 +532,7 @@ export function DebtTab() {
   );
 }
 
-function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete }: {
+function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onEditEntry }: {
   debt: Debt;
   currency: string;
   wallets: { id: number; name: string }[];
@@ -463,6 +541,7 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
   onPay: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onEditEntry: (entry: NonNullable<Debt['entries']>[0]) => void;
 }) {
   const pct = Number(d.totalAmount) > 0 ? (Number(d.settledAmount) / Number(d.totalAmount)) * 100 : 0;
   const isPayable = d.type === 'PAYABLE';
@@ -534,6 +613,29 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
               </>
             );
           })()}
+
+          {/* Entry history rows */}
+          {(d.entries ?? []).length > 0 && (
+            <div className="mb-2.5 space-y-1">
+              {(d.entries ?? []).map((e) => {
+                const walletName = e.walletId ? (wallets.find((w) => w.id === e.walletId)?.name ?? 'Unknown') : '—';
+                return (
+                  <div key={e.id} className="flex items-center justify-between text-[10px] text-gray-400 bg-gray-50 rounded-lg px-2 py-1.5">
+                    <span className="capitalize">{e.type.toLowerCase()} · {walletName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-500">{formatCurrency(Number(e.amount), currency)}</span>
+                      <button
+                        onClick={() => onEditEntry(e)}
+                        className="text-[10px] text-amber-600 font-semibold hover:underline"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 flex-wrap">
             {d.status !== 'CLOSED' && (

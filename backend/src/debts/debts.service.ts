@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
+import { UpdateDebtEntryDto } from './dto/update-debt-entry.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
 import { DebtStatus } from '@prisma/client';
 
@@ -167,6 +168,51 @@ export class DebtsService {
       });
 
       return tx.debt.findUnique({ where: { id: debt.id }, include: { entries: { orderBy: { date: 'desc' }, take: 5 } } });
+    });
+  }
+
+  async updateEntry(debtId: number, entryId: number, userId: number, dto: UpdateDebtEntryDto) {
+    const debt = await this.findAndVerify(debtId, userId);
+
+    const entry = await this.prisma.debtEntry.findUnique({ where: { id: entryId } });
+    if (!entry || entry.debtId !== debt.id) throw new NotFoundException('Entry not found');
+
+    const walletChanged = dto.walletId !== undefined && dto.walletId !== entry.walletId;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (walletChanged && entry.transactionId) {
+        const oldTx = await tx.transaction.findUnique({ where: { id: entry.transactionId } });
+        if (oldTx) {
+          // Reverse old wallet balance
+          if (oldTx.type === 'INCOME') {
+            await tx.wallet.update({ where: { id: oldTx.walletId }, data: { currentBalance: { decrement: oldTx.amount } } });
+          } else {
+            await tx.wallet.update({ where: { id: oldTx.walletId }, data: { currentBalance: { increment: oldTx.amount } } });
+          }
+          // Apply to new wallet
+          if (oldTx.type === 'INCOME') {
+            await tx.wallet.update({ where: { id: dto.walletId! }, data: { currentBalance: { increment: oldTx.amount } } });
+          } else {
+            await tx.wallet.update({ where: { id: dto.walletId! }, data: { currentBalance: { decrement: oldTx.amount } } });
+          }
+          // Update the linked transaction's walletId
+          await tx.transaction.update({ where: { id: entry.transactionId }, data: { walletId: dto.walletId! } });
+        }
+      }
+
+      await tx.debtEntry.update({
+        where: { id: entryId },
+        data: {
+          ...(walletChanged && { walletId: dto.walletId }),
+          ...(dto.note !== undefined && { note: dto.note }),
+          ...(dto.date && { date: new Date(dto.date) }),
+        },
+      });
+
+      return tx.debt.findUnique({
+        where: { id: debt.id },
+        include: { entries: { orderBy: { date: 'desc' }, take: 5 } },
+      });
     });
   }
 
