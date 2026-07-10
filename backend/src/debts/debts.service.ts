@@ -229,7 +229,23 @@ export class DebtsService {
 
   async delete(id: number, userId: number) {
     const debt = await this.findAndVerify(id, userId);
-    await this.prisma.debt.delete({ where: { id: debt.id } });
+
+    await this.prisma.$transaction(async (tx) => {
+      // Reverse all linked transactions (original debt tx + all entry txs)
+      const linkedTxs = await tx.transaction.findMany({ where: { debtId: debt.id } });
+
+      for (const t of linkedTxs) {
+        if (t.type === 'INCOME' && t.walletId) {
+          await tx.wallet.update({ where: { id: t.walletId }, data: { currentBalance: { decrement: Number(t.amount) } } });
+        } else if (t.type === 'EXPENSE' && t.walletId) {
+          await tx.wallet.update({ where: { id: t.walletId }, data: { currentBalance: { increment: Number(t.amount) } } });
+        }
+        await tx.transaction.delete({ where: { id: t.id } });
+      }
+
+      await tx.debtEntry.deleteMany({ where: { debtId: debt.id } });
+      await tx.debt.delete({ where: { id: debt.id } });
+    }, { timeout: 20000 });
   }
 
   private async findDebtCategory(accountId: number, name: string) {
