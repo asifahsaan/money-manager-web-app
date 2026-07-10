@@ -1,0 +1,5 @@
+Expensetracker render data for environment variables
+
+DATABASE_URL: mysql://root:zKHQAsGoGoKggEmzqOoHXVnEiHUbadbw@hayabusa.proxy.rlwy.net:55215/railway
+JWT_SECRET: mysupermoneykeyb-18775
+FRONTEND_URL
