@@ -26,6 +26,7 @@ let StatisticsService = class StatisticsService {
                 accountId,
                 type: { in: ['INCOME', 'EXPENSE'] },
                 date: { gte: start, lte: end },
+                OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
             },
             select: {
                 id: true,
@@ -109,7 +110,12 @@ let StatisticsService = class StatisticsService {
         const start = (0, date_fns_1.startOfMonth)((0, date_fns_1.subMonths)(now, months - 1));
         const end = (0, date_fns_1.endOfMonth)(now);
         const txs = await this.prisma.transaction.findMany({
-            where: { accountId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lte: end } },
+            where: {
+                accountId,
+                type: { in: ['INCOME', 'EXPENSE'] },
+                date: { gte: start, lte: end },
+                OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
+            },
             select: { type: true, amount: true, date: true },
         });
         const monthMap = new Map();

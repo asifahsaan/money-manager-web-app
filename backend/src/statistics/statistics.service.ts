@@ -28,6 +28,7 @@ export class StatisticsService {
         accountId,
         type: { in: ['INCOME', 'EXPENSE'] },
         date: { gte: start, lte: end },
+        OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
       },
       select: {
         id: true,
@@ -146,7 +147,12 @@ export class StatisticsService {
     const end = endOfMonth(now);
 
     const txs = await this.prisma.transaction.findMany({
-      where: { accountId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lte: end } },
+      where: {
+        accountId,
+        type: { in: ['INCOME', 'EXPENSE'] },
+        date: { gte: start, lte: end },
+        OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
+      },
       select: { type: true, amount: true, date: true },
     });
 
