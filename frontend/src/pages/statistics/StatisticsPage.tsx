@@ -115,7 +115,8 @@ export function StatisticsPage() {
   const [selectedCatColor, setSelectedCatColor] = useState<string>('#EF4444');
   const [modalTab, setModalTab] = useState<'transactions' | 'groups'>('transactions');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [donutFilter, setDonutFilter] = useState<{ id: number | null; name: string; color: string } | null>(null);
+  const [donutFilter, setDonutFilter] = useState<{ id: number | null; name: string; color: string; amount: number } | null>(null);
+  const [incomeFilter, setIncomeFilter] = useState<{ id: number | null; name: string; color: string; amount: number } | null>(null);
   const [showDonutExpense, setShowDonutExpense] = useState(true);
   const [showDonutIncome, setShowDonutIncome] = useState(true);
 
@@ -290,8 +291,8 @@ export function StatisticsPage() {
         </div>
       </div>
 
-      {/* ── Expense Structure (62%) + Income Structure (38%) ── */}
-      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] lg:items-start gap-4 shrink-0">
+      {/* ── Expense Structure + Income Structure (50/50) ── */}
+      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-2 lg:items-start gap-4 shrink-0">
         <StructurePanel
           title="Expense Structure"
           type="expense"
@@ -302,8 +303,8 @@ export function StatisticsPage() {
           onToggleDonut={() => setShowDonutExpense((v) => !v)}
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
           donutFilter={donutFilter}
-          onDonutClick={(id, name, color) => setDonutFilter((f) => f?.id === id ? null : { id, name, color })}
-          chartSize={180}
+          onDonutClick={(id, name, color, amount) => setDonutFilter((f) => f?.id === id ? null : { id, name, color, amount })}
+          chartSize={170}
         />
         <StructurePanel
           title="Income Structure"
@@ -314,9 +315,9 @@ export function StatisticsPage() {
           showDonut={showDonutIncome}
           onToggleDonut={() => setShowDonutIncome((v) => !v)}
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
-          donutFilter={null}
-          onDonutClick={() => {}}
-          chartSize={160}
+          donutFilter={incomeFilter}
+          onDonutClick={(id, name, color, amount) => setIncomeFilter((f) => f?.id === id ? null : { id, name, color, amount })}
+          chartSize={170}
         />
       </div>
 
@@ -329,10 +330,10 @@ export function StatisticsPage() {
             {donutFilter && (
               <button
                 onClick={() => setDonutFilter(null)}
-                className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-white"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold text-white"
                 style={{ backgroundColor: donutFilter.color }}
               >
-                {donutFilter.name} <X size={10} />
+                {donutFilter.name} · {formatCurrency(donutFilter.amount, currency)} <X size={10} />
               </button>
             )}
           </div>
@@ -373,7 +374,7 @@ export function StatisticsPage() {
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-gray-800">
-              Weekly Spending{donutFilter ? ` — ${donutFilter.name}` : ''}
+              Weekly Spending{donutFilter ? ` — ${donutFilter.name} (${formatCurrency(donutFilter.amount, currency)})` : ''}
             </p>
             <span className="text-[10px] text-gray-400">Mon–Sun</span>
           </div>
@@ -605,8 +606,8 @@ function StructurePanel({
   showDonut: boolean;
   onToggleDonut: () => void;
   onClickCat: (cat: CategoryBreakdownItem, color: string) => void;
-  donutFilter: { id: number | null; name: string; color: string } | null;
-  onDonutClick: (id: number | null, name: string, color: string) => void;
+  donutFilter: { id: number | null; name: string; color: string; amount: number } | null;
+  onDonutClick: (id: number | null, name: string, color: string, amount: number) => void;
   chartSize?: number;
 }) {
   const pieData = breakdown.slice(0, 8).map((c, i) => ({
@@ -631,7 +632,7 @@ function StructurePanel({
       {breakdown.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">No data</p>
       ) : (
-        <div className={cn('gap-5', showDonut ? 'flex items-center flex-wrap justify-center sm:justify-start' : 'block')}>
+        <div className={cn('gap-4', showDonut ? 'flex items-center' : 'block')}>
           {/* Donut */}
           {showDonut && pieData.length > 0 && (
             <div className="relative flex-shrink-0" style={{ width: chartSize, height: chartSize }}>
@@ -640,7 +641,7 @@ function StructurePanel({
                   innerRadius={chartSize * 0.32} outerRadius={chartSize * 0.46}
                   paddingAngle={2} dataKey="value" strokeWidth={0}
                   cursor="pointer"
-                  onClick={(entry) => onDonutClick(entry.id, entry.name, entry.color)}>
+                  onClick={(entry) => onDonutClick(entry.id, entry.name, entry.color, entry.value)}>
                   {pieData.map((entry, i) => (
                     <Cell
                       key={i}
@@ -652,17 +653,19 @@ function StructurePanel({
                   ))}
                 </Pie>
               </PieChart>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[10px] text-gray-400 leading-tight capitalize">{type}</p>
-                <p className="text-sm font-black text-gray-800 leading-tight" style={{ color: typeColor }}>
-                  {formatCurrency(total, currency)}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2 text-center">
+                <p className="text-[10px] text-gray-400 leading-tight capitalize truncate max-w-full">
+                  {donutFilter ? donutFilter.name : type}
+                </p>
+                <p className="text-sm font-black text-gray-800 leading-tight" style={{ color: donutFilter?.color ?? typeColor }}>
+                  {formatCurrency(donutFilter ? donutFilter.amount : total, currency)}
                 </p>
               </div>
             </div>
           )}
 
           {/* Category list */}
-          <div className="flex-1 min-w-0 w-full sm:max-w-md space-y-1">
+          <div className="flex-1 min-w-0 space-y-1">
             {breakdown.map((cat, i) => {
               const color = cat.color ?? DONUT_COLORS[i % DONUT_COLORS.length];
               const Icon = resolveIcon(cat.icon);
