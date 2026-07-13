@@ -290,8 +290,8 @@ export function StatisticsPage() {
         </div>
       </div>
 
-      {/* ── Two-column: Expense Structure + Income Structure ── */}
-      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
+      {/* ── Expense Structure (62%) + Income Structure (38%) ── */}
+      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] lg:items-start gap-4 shrink-0">
         <StructurePanel
           title="Expense Structure"
           type="expense"
@@ -303,6 +303,7 @@ export function StatisticsPage() {
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
           donutFilter={donutFilter}
           onDonutClick={(id, name, color) => setDonutFilter((f) => f?.id === id ? null : { id, name, color })}
+          chartSize={180}
         />
         <StructurePanel
           title="Income Structure"
@@ -315,6 +316,7 @@ export function StatisticsPage() {
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
           donutFilter={null}
           onDonutClick={() => {}}
+          chartSize={160}
         />
       </div>
 
@@ -593,7 +595,7 @@ export function StatisticsPage() {
 
 /* ─── Structure Panel (Expense or Income) ─── */
 function StructurePanel({
-  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat, donutFilter, onDonutClick,
+  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat, donutFilter, onDonutClick, chartSize = 130,
 }: {
   title: string;
   type: 'expense' | 'income';
@@ -605,6 +607,7 @@ function StructurePanel({
   onClickCat: (cat: CategoryBreakdownItem, color: string) => void;
   donutFilter: { id: number | null; name: string; color: string } | null;
   onDonutClick: (id: number | null, name: string, color: string) => void;
+  chartSize?: number;
 }) {
   const pieData = breakdown.slice(0, 8).map((c, i) => ({
     name: c.name,
@@ -628,12 +631,13 @@ function StructurePanel({
       {breakdown.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">No data</p>
       ) : (
-        <div className={cn('gap-4', showDonut ? 'flex items-start' : 'block')}>
+        <div className={cn('gap-5', showDonut ? 'flex items-center flex-wrap justify-center sm:justify-start' : 'block')}>
           {/* Donut */}
           {showDonut && pieData.length > 0 && (
-            <div className="relative flex-shrink-0">
-              <PieChart width={130} height={130}>
-                <Pie data={pieData} cx={65} cy={65} innerRadius={40} outerRadius={58}
+            <div className="relative flex-shrink-0" style={{ width: chartSize, height: chartSize }}>
+              <PieChart width={chartSize} height={chartSize}>
+                <Pie data={pieData} cx={chartSize / 2} cy={chartSize / 2}
+                  innerRadius={chartSize * 0.32} outerRadius={chartSize * 0.46}
                   paddingAngle={2} dataKey="value" strokeWidth={0}
                   cursor="pointer"
                   onClick={(entry) => onDonutClick(entry.id, entry.name, entry.color)}>
@@ -649,8 +653,8 @@ function StructurePanel({
                 </Pie>
               </PieChart>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[9px] text-gray-400 leading-tight">{type}</p>
-                <p className="text-xs font-black text-gray-800 leading-tight" style={{ color: typeColor }}>
+                <p className="text-[10px] text-gray-400 leading-tight capitalize">{type}</p>
+                <p className="text-sm font-black text-gray-800 leading-tight" style={{ color: typeColor }}>
                   {formatCurrency(total, currency)}
                 </p>
               </div>
@@ -658,31 +662,36 @@ function StructurePanel({
           )}
 
           {/* Category list */}
-          <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex-1 min-w-0 w-full sm:max-w-md space-y-1">
             {breakdown.map((cat, i) => {
               const color = cat.color ?? DONUT_COLORS[i % DONUT_COLORS.length];
               const Icon = resolveIcon(cat.icon);
               const dimmed = donutFilter && donutFilter.id !== cat.id;
               return (
                 <button key={`${cat.id}-${i}`} onClick={() => onClickCat(cat, color)}
-                  className={cn('w-full flex items-center gap-2 py-1.5 rounded-lg px-1 hover:bg-gray-50 transition-all', dimmed && 'opacity-30')}>
+                  className={cn('w-full grid grid-cols-[2px_24px_1fr] items-center gap-2 py-1.5 rounded-lg px-1 hover:bg-gray-50 transition-all', dimmed && 'opacity-30')}>
                   {/* Color indicator */}
-                  <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                  <div className="h-8 rounded-full" style={{ backgroundColor: color }} />
                   {/* Icon */}
-                  <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: color, boxShadow: 'inset 0 -3px 8px rgba(0,0,0,0.1)' }}>
                     <Icon size={11} color="white" />
                   </div>
                   {/* Content */}
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="flex items-center justify-between">
+                  <div className="text-left min-w-0">
+                    <div className="grid grid-cols-[1fr_auto] items-baseline gap-2">
                       <span className="text-[11px] font-bold text-gray-800 truncate">{cat.name}</span>
-                      <span className="text-[10px] text-gray-400 ml-1 flex-shrink-0">
-                        {formatCurrency(cat.amount, currency)} • {cat.percentage.toFixed(0)}% • {cat.transactions.length} tx
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                        {formatCurrency(cat.amount, currency)}
                       </span>
                     </div>
-                    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mt-0.5">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(cat.percentage, 100)}%`, backgroundColor: color }} />
+                    <div className="grid grid-cols-[1fr_auto] items-center gap-2 mt-0.5">
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(cat.percentage, 100)}%`, backgroundColor: color }} />
+                      </div>
+                      <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                        {cat.percentage.toFixed(0)}% · {cat.transactions.length} tx
+                      </span>
                     </div>
                   </div>
                 </button>
