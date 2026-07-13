@@ -262,14 +262,14 @@ export function StatisticsPage() {
             <p className={cn('text-base font-black', openingBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
               {isLoading ? '…' : formatCurrency(openingBalance, currency)}
             </p>
-            <p className="text-[10px] text-gray-400 mt-1">Before period</p>
+            <p className="text-[10px] text-gray-400 mt-1">Before {label}</p>
           </div>
           <div className="stat-card">
-            <p className="text-[10px] text-gray-400 font-medium mb-1">Ending Balance</p>
+            <p className="text-[10px] text-gray-400 font-medium mb-1">Remaining Balance</p>
             <p className={cn('text-base font-black', endingBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
               {formatCurrency(endingBalance, currency)}
             </p>
-            <p className="text-[10px] text-gray-400 mt-1">Included wallets</p>
+            <p className="text-[10px] text-gray-400 mt-1">After {label}</p>
           </div>
           <div className="stat-card">
             <p className="text-[10px] text-gray-400 font-medium mb-1">Income / Expense</p>
