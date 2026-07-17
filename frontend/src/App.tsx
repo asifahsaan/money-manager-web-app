@@ -14,6 +14,7 @@ import { StatisticsPage } from '@/pages/statistics/StatisticsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { useAuthStore } from '@/stores/auth.store';
 import { AdminPage } from '@/pages/admin/AdminPage';
+import { LandingPage } from '@/pages/landing/LandingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,7 @@ const queryClient = new QueryClient({
 });
 
 const router = createBrowserRouter([
+  { path: '/', element: <LandingPage /> },
   {
     element: <AuthLayout />,
     children: [
@@ -35,7 +37,6 @@ const router = createBrowserRouter([
   {
     element: <DashboardLayout />,
     children: [
-      { path: '/', element: <Navigate to="/transactions" replace /> },
       { path: '/transactions', element: <TransactionsPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/statistics', element: <StatisticsPage /> },
