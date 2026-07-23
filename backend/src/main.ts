@@ -20,6 +20,8 @@ async function bootstrap() {
     origin: [
       /^http:\/\/localhost:\d+$/,
       'https://money-manager-web-app.vercel.app',
+      'https://localhost',
+      'capacitor://localhost',
       ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
     ],
     credentials: true,
