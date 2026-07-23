@@ -2,6 +2,7 @@ import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -15,6 +16,15 @@ import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { useAuthStore } from '@/stores/auth.store';
 import { AdminPage } from '@/pages/admin/AdminPage';
 import { LandingPage } from '@/pages/landing/LandingPage';
+import { setupNativeApp } from '@/lib/native';
+
+const isNative = Capacitor.isNativePlatform();
+
+function RootRoute() {
+  const token = useAuthStore((s) => s.token);
+  if (isNative) return <Navigate to={token ? '/transactions' : '/login'} replace />;
+  return <LandingPage />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +36,7 @@ const queryClient = new QueryClient({
 });
 
 const router = createBrowserRouter([
-  { path: '/', element: <LandingPage /> },
+  { path: '/', element: <RootRoute /> },
   {
     element: <AuthLayout />,
     children: [
@@ -51,7 +61,10 @@ const router = createBrowserRouter([
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
-  useEffect(() => { initialize(); }, [initialize]);
+  useEffect(() => {
+    initialize();
+    if (isNative) setupNativeApp();
+  }, [initialize]);
   return <>{children}</>;
 }
 

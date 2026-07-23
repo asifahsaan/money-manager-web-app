@@ -35,6 +35,24 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400;
   }
+
+  /* Native Android shell (Capacitor) — feel like an installed app, not a browser tab */
+  .native-app {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior-y: none;
+  }
+  .native-app input,
+  .native-app textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  /* Comfortable tap targets on touch devices without disturbing icon-only buttons */
+  .native-app button:not([class*='w-']),
+  .native-app a:not([class*='w-']) {
+    min-height: 40px;
+  }
 }
 
 @layer components {

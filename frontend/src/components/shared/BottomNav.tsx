@@ -11,7 +11,10 @@ const navItems = [
 
 export function BottomNav() {
   return (
-    <nav className="glass-panel fixed bottom-0 left-0 right-0 z-40 border-t border-white/50">
+    <nav
+      className="glass-panel fixed bottom-0 left-0 right-0 z-40 border-t border-white/50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex items-stretch h-16">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink

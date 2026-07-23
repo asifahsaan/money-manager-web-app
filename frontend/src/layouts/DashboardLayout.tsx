@@ -46,7 +46,10 @@ export function DashboardLayout() {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header */}
-        <header className="glass-panel flex items-center justify-between border-b border-gray-200/60 px-4 py-3 flex-shrink-0">
+        <header
+          className="glass-panel flex items-center justify-between border-b border-gray-200/60 px-4 py-3 flex-shrink-0"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        >
           <div className="flex items-center gap-3">
             {/* Collapse toggle — desktop */}
             <button
@@ -69,7 +72,7 @@ export function DashboardLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+        <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
           <Outlet />
         </main>
       </div>
