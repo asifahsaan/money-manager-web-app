@@ -1,10 +1,11 @@
 services:
   - type: web
-    name: money-manager-api
+    name: money-manager-backend
     runtime: node
+    plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npm run start:prod
+    buildCommand: npm install && npx prisma generate && npm run build && npx prisma migrate deploy
+    startCommand: node dist/main
     envVars:
       - key: NODE_ENV
         value: production
@@ -14,7 +15,5 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: JWT_EXPIRES_IN
-        value: 7d
       - key: FRONTEND_URL
-        sync: false
+        value: https://money-manager-web-app.vercel.app

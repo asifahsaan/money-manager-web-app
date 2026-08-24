@@ -1,5 +1,5 @@
 // Prisma schema for Money Manager
-// Database: MySQL
+// Database: PostgreSQL
 // All money fields use Decimal(18,2) — never Float
 
 generator client {
@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
