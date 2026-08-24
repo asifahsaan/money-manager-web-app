@@ -12,7 +12,9 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest"
+    "test": "jest",
+    "backup": "ts-node -r tsconfig-paths/register scripts/backup-database.ts",
+    "restore": "ts-node -r tsconfig-paths/register scripts/restore-database.ts"
   },
   "dependencies": {
     "@nestjs/cli": "^10.3.0",
