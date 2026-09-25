@@ -6,6 +6,7 @@ import { accountService } from '@/services/account.service';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { BottomNav } from '@/components/shared/BottomNav';
 import { AccountSelector } from '@/components/shared/AccountSelector';
+import { WhatsNewButton } from '@/components/shared/WhatsNew';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
 import { Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,8 @@ export function DashboardLayout() {
 
             <AccountSelector />
           </div>
+
+          <WhatsNewButton />
         </header>
 
         {/* Page content */}

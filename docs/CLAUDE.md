@@ -137,6 +137,17 @@ Rules for schema changes:
 * Money fields stay `Decimal(18,2)`.
 * Keep the schema portable to MySQL and SQL Server (no Postgres-only types such as arrays or `Json` path queries) so the mirror keeps working; re-run `npm run mirror:setup` after migrations.
 
+## Release Notes ("What's New")
+
+Users see release notes from the header's **What's New** button (`frontend/src/data/releases.ts`).
+For every release that reaches users (push to GitHub → Vercel/Render deploy):
+
+1. Add a new entry at the TOP of `RELEASES` — version, date, short title, and changes tagged
+   `new` / `improved` / `fixed` / `security`. Write for end users, not developers.
+2. Bump `version` in `frontend/package.json` to the same number.
+
+A new top version makes the red dot reappear for every user until they open the panel.
+
 ## Original Planning Priority (historical)
 
 Begin with planning only.

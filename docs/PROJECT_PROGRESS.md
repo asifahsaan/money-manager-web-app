@@ -144,6 +144,9 @@ Found in a full code review; verified end-to-end against an isolated Postgres (1
   user transactions named "Opening Balance" disappearing
 - [x] Goal/debt/statistics dates parsed as UTC (same fix as transactions had)
 
+- [x] **What's New** panel in the header — full release history (v1.0.0 → v1.6.0) from
+  `frontend/src/data/releases.ts`, red dot until the user opens the latest release
+
 ### Still open from the review
 - Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
 - No automated tests; no wallet-balance reconciliation job

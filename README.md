@@ -21,6 +21,7 @@ A full-stack personal finance management application with expense tracking, budg
 - **Admin Panel** — Role-based (Admin / Superadmin) user management and BI reports
 - **Landing Page** — Public marketing page at the root route
 - **Android App** — Capacitor wrapper builds a native APK from the same frontend
+- **What's New** — In-app release notes with the full history of changes
 - **Local Database Mirror** — Daily automatic copy of the production database to a local MySQL or SQL Server
 
 ---
