@@ -89,7 +89,7 @@ Production data lives on Neon (PostgreSQL). Two safety nets keep a copy on your 
 1. Create an empty database on either engine — the engine is picked from the URL scheme:
    - **MySQL 8** (or `docker compose up -d mysql`): `mysql://user:pass@localhost:3306/money_manager_mirror`
    - **SQL Server** (Windows login): `sqlserver://localhost:1433;database=MoneyManagerMirror;integratedSecurity=true;trustServerCertificate=true` — enable TCP/IP in *SQL Server Configuration Manager* first
-2. In `backend/.env`, set `DATABASE_URL` to the **production** Neon URL and `MIRROR_DATABASE_URL` to the local URL.
+2. In `backend/.env`, set `PRODUCTION_DATABASE_URL` to the **production** Neon URL and `MIRROR_DATABASE_URL` to the local URL. (`DATABASE_URL` can then point at a Neon dev branch for local development.)
 3. `npm run mirror:setup`, then `npm run mirror:sync` once to test.
 4. Schedule it daily (Windows):
    ```powershell

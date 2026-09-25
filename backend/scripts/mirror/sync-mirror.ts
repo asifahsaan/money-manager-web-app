@@ -1,4 +1,5 @@
-// Copies the whole production database (PostgreSQL, DATABASE_URL) into the
+// Copies the whole production database (PostgreSQL — PRODUCTION_DATABASE_URL,
+// falling back to DATABASE_URL) into the
 // local mirror (MIRROR_DATABASE_URL — MySQL or SQL Server) and saves a dated
 // JSON snapshot.
 //
@@ -60,7 +61,10 @@ async function main() {
   const provider = mirrorProvider();
 
   mkdirSync(backupDir, { recursive: true });
-  const source = new PrismaClient();
+  // Local dev usually points DATABASE_URL at a Neon dev branch; the mirror must
+  // always copy production, so it prefers PRODUCTION_DATABASE_URL.
+  const sourceUrl = process.env.PRODUCTION_DATABASE_URL || process.env.DATABASE_URL;
+  const source = new PrismaClient({ datasources: { db: { url: sourceUrl } } });
   const mirror = new MirrorClient({ datasources: { db: { url: mirrorUrl() } } });
 
   try {
