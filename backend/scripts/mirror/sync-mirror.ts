@@ -1,10 +1,11 @@
 // Copies the whole production database (PostgreSQL, DATABASE_URL) into the
-// local MySQL mirror (MIRROR_DATABASE_URL) and saves a dated JSON snapshot.
+// local mirror (MIRROR_DATABASE_URL — MySQL or SQL Server) and saves a dated
+// JSON snapshot.
 //
 //   npm run mirror:sync            normal run (used by the daily scheduled task)
 //   npm run mirror:sync -- --force skip the shrink safety check
 //
-// The mirror is replaced inside one MySQL transaction, so a failed run leaves
+// The mirror is replaced inside one transaction, so a failed run leaves
 // the previous copy intact. If production suddenly has far fewer rows than the
 // mirror (e.g. the hosted DB was wiped, like the Railway trial expiry), the run
 // aborts instead of overwriting the last good local copy.
@@ -13,8 +14,10 @@ import { PrismaClient as MirrorClient } from '../../node_modules/.prisma/mirror-
 import { appendFileSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { TABLES, delegates, Row, TableKey } from '../lib/tables';
+import { mirrorProvider, mirrorUrl } from './mirror-env';
 
-const BATCH_SIZE = 1000;
+const MAX_ROWS_PER_INSERT = 1000;
+const SQLSERVER_MAX_PARAMS = 2000; // SQL Server allows 2100 parameters per query
 const SNAPSHOTS_TO_KEEP = 30;
 const SHRINK_LIMIT = 0.5; // abort if production has < 50% of the mirror's rows
 
@@ -54,16 +57,14 @@ function saveSnapshot(data: Record<TableKey, Row[]>) {
 
 async function main() {
   const force = process.argv.includes('--force');
-  if (!process.env.MIRROR_DATABASE_URL) {
-    throw new Error('MIRROR_DATABASE_URL is not set in backend/.env');
-  }
+  const provider = mirrorProvider();
 
   mkdirSync(backupDir, { recursive: true });
   const source = new PrismaClient();
-  const mirror = new MirrorClient();
+  const mirror = new MirrorClient({ datasources: { db: { url: mirrorUrl() } } });
 
   try {
-    log('Mirror sync started');
+    log(`Mirror sync started (${provider})`);
 
     const data = {} as Record<TableKey, Row[]>;
     const src = delegates(source);
@@ -89,18 +90,30 @@ async function main() {
 
     await mirror.$transaction(
       async (tx) => {
-        // FK checks off for this connection only: tables are wiped and refilled
-        // wholesale, and categories reference each other (parentCategoryId).
-        await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+        // MySQL: FK checks off for this connection only — tables are wiped and
+        // refilled wholesale, and categories reference each other.
+        // SQL Server mirror has no DB-level FKs (relationMode = "prisma").
+        if (provider === 'mysql') await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
         const t = delegates(tx);
-        for (const { model } of [...TABLES].reverse()) await t[model].deleteMany();
+        // Raw DELETE: Prisma's emulated relation checks would trip over the
+        // self-referencing categories table on the SQL Server mirror.
+        for (const { table } of [...TABLES].reverse()) {
+          await tx.$executeRawUnsafe(
+            provider === 'mysql' ? `DELETE FROM \`${table}\`` : `DELETE FROM [${table}]`,
+          );
+        }
         for (const { key, model } of TABLES) {
           const rows = data[key].map(toMirrorRow);
-          for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-            await t[model].createMany({ data: rows.slice(i, i + BATCH_SIZE) });
+          const columns = rows.length ? Object.keys(rows[0]).length : 1;
+          const batch =
+            provider === 'sqlserver'
+              ? Math.max(1, Math.floor(SQLSERVER_MAX_PARAMS / columns))
+              : MAX_ROWS_PER_INSERT;
+          for (let i = 0; i < rows.length; i += batch) {
+            await t[model].createMany({ data: rows.slice(i, i + batch) });
           }
         }
-        await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+        if (provider === 'mysql') await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
       },
       { maxWait: 30_000, timeout: 10 * 60_000 },
     );

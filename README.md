@@ -21,7 +21,7 @@ A full-stack personal finance management application with expense tracking, budg
 - **Admin Panel** — Role-based (Admin / Superadmin) user management and BI reports
 - **Landing Page** — Public marketing page at the root route
 - **Android App** — Capacitor wrapper builds a native APK from the same frontend
-- **Local MySQL Mirror** — Daily automatic copy of the production database to a local MySQL server
+- **Local Database Mirror** — Daily automatic copy of the production database to a local MySQL or SQL Server
 
 ---
 
@@ -33,7 +33,7 @@ A full-stack personal finance management application with expense tracking, budg
 | Styling | Tailwind CSS, Glass morphism UI |
 | Charts | Recharts |
 | Backend | NestJS, Prisma ORM |
-| Database | PostgreSQL (Neon) — plus a local MySQL mirror for backups |
+| Database | PostgreSQL (Neon) — plus a local MySQL / SQL Server mirror for backups |
 | Auth | JWT (access + refresh tokens) |
 | Mobile | Capacitor (Android) |
 | Deployment | Vercel (frontend) + Render (backend) + Neon (PostgreSQL) |
@@ -45,7 +45,7 @@ A full-stack personal finance management application with expense tracking, budg
 ### Prerequisites
 - Node.js 18+
 - A PostgreSQL database — a free [Neon](https://neon.tech) branch, or `docker compose up -d postgres`
-- *(Optional)* MySQL 8 — only for the local production mirror
+- *(Optional)* MySQL 8 or Microsoft SQL Server — only for the local production mirror
 
 ### 1. Clone the repo
 ```bash
@@ -74,7 +74,7 @@ Frontend runs at `http://localhost:5173` — Backend API at `http://localhost:30
 
 ---
 
-## 💾 Backups & Local MySQL Mirror
+## 💾 Backups & Local Database Mirror
 
 Production data lives on Neon (PostgreSQL). Two safety nets keep a copy on your machine:
 
@@ -82,12 +82,14 @@ Production data lives on Neon (PostgreSQL). Two safety nets keep a copy on your 
 |---|---|
 | `npm run backup` | Exports every table to `backups/backup-<timestamp>.json` |
 | `npm run restore <file>` | Re-inserts a JSON backup into `DATABASE_URL` (skips duplicates) |
-| `npm run mirror:setup` | Creates/updates the MySQL mirror tables from the Prisma schema |
-| `npm run mirror:sync` | Copies all production data into MySQL + saves `backups/daily/snapshot-<date>.json` |
+| `npm run mirror:setup` | Creates/updates the mirror tables from the Prisma schema |
+| `npm run mirror:sync` | Copies all production data into the mirror + saves `backups/daily/snapshot-<date>.json` |
 
 **One-time setup**
-1. Install MySQL 8 (or `docker compose up -d mysql`) and create a database, e.g. `money_manager_mirror`.
-2. In `backend/.env`, set `DATABASE_URL` to the **production** Neon URL and `MIRROR_DATABASE_URL` to the local MySQL URL.
+1. Create an empty database on either engine — the engine is picked from the URL scheme:
+   - **MySQL 8** (or `docker compose up -d mysql`): `mysql://user:pass@localhost:3306/money_manager_mirror`
+   - **SQL Server** (Windows login): `sqlserver://localhost:1433;database=MoneyManagerMirror;integratedSecurity=true;trustServerCertificate=true` — enable TCP/IP in *SQL Server Configuration Manager* first
+2. In `backend/.env`, set `DATABASE_URL` to the **production** Neon URL and `MIRROR_DATABASE_URL` to the local URL.
 3. `npm run mirror:setup`, then `npm run mirror:sync` once to test.
 4. Schedule it daily (Windows):
    ```powershell
@@ -121,7 +123,7 @@ money-manager-web-app/
 │   │   ├── statistics/
 │   │   └── auth/
 │   ├── prisma/        # Database schema & migrations
-│   └── scripts/       # Backup, restore, MySQL mirror sync
+│   └── scripts/       # Backup, restore, local mirror sync
 └── docker-compose.yml # Optional local Postgres (dev) + MySQL (mirror)
 ```
 
@@ -134,7 +136,7 @@ money-manager-web-app/
 | Frontend | Vercel | [money-manager-web-app.vercel.app](https://money-manager-web-app.vercel.app) |
 | Backend API | Render (free) | `money-manager-backend-6wce.onrender.com` — config in `render.yaml` |
 | Database | Neon | Managed PostgreSQL |
-| Local mirror | Your PC | MySQL 8, synced daily |
+| Local mirror | Your PC | MySQL 8 or SQL Server, synced daily |
 
 ---
 

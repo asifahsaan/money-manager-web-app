@@ -27,7 +27,7 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAv
   -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
-  -Description 'Copies the Money Manager production PostgreSQL DB into the local MySQL mirror.' -Force | Out-Null
+  -Description 'Copies the Money Manager production PostgreSQL DB into the local database mirror.' -Force | Out-Null
 
 Write-Host "Scheduled task '$TaskName' will run daily at $At in $backendDir"
 Write-Host "Run it now with:  Start-ScheduledTask -TaskName $TaskName"

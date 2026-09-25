@@ -50,7 +50,7 @@ The app should feel like a polished SaaS finance dashboard, not a rough admin pa
 * Prisma migrations
 * Decimal fields for all money values
 * Proper indexes, relations, and foreign keys
-* Local MySQL mirror of production for daily backups
+* Local mirror of production (MySQL or SQL Server) for daily backups
 
 ---
 

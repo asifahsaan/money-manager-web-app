@@ -54,7 +54,7 @@ Database:
 * Prisma migrations
 * Decimal fields for money values
 * Proper indexes and foreign keys
-* Local MySQL mirror of production, synced daily (`npm run mirror:sync`) — backup copy only, the app never reads from it
+* Local mirror of production (MySQL or SQL Server), synced daily (`npm run mirror:sync`) — backup copy only, the app never reads from it
 
 ## Important Working Rules
 
@@ -129,13 +129,13 @@ Phases 0–4 are complete and the app is live:
 * Backend: Render free tier (`render.yaml`, runs `prisma migrate deploy` on build)
 * Database: Neon PostgreSQL
 * Android: Capacitor wrapper in `frontend/android`
-* Backups: `npm run backup` (JSON) and the daily local MySQL mirror (`npm run mirror:sync`, see README)
+* Backups: `npm run backup` (JSON) and the daily local database mirror (`npm run mirror:sync`, see README)
 
 Rules for schema changes:
 
 * Add a Prisma migration (`npx prisma migrate dev`) — Render applies it on deploy.
 * Money fields stay `Decimal(18,2)`.
-* Keep the schema MySQL-compatible (no Postgres-only types such as arrays or `Json` path queries) so the mirror keeps working; re-run `npm run mirror:setup` after migrations.
+* Keep the schema portable to MySQL and SQL Server (no Postgres-only types such as arrays or `Json` path queries) so the mirror keeps working; re-run `npm run mirror:setup` after migrations.
 
 ## Original Planning Priority (historical)
 

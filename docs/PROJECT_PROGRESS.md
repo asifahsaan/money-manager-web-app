@@ -10,7 +10,7 @@
 | Frontend | Vercel — money-manager-web-app.vercel.app |
 | Backend | Render free tier — `render.yaml` |
 | Database | Neon PostgreSQL |
-| Local mirror | MySQL 8 on the dev PC, synced daily |
+| Local mirror | SQL Server 2025 on the dev PC (`MoneyManagerMirror`), synced daily — MySQL also supported |
 
 ---
 
@@ -117,9 +117,10 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 - [x] **Aug 2026:** Railway trial expired (data lost) → moved to **Render (backend) + Neon (PostgreSQL)**
   - Prisma provider switched MySQL → PostgreSQL, fresh `20260824201624_init` migration
 - [x] JSON backup/restore scripts (`npm run backup`, `npm run restore <file>`)
-- [x] **Sep 2026:** Local MySQL mirror of production
-  - `npm run mirror:setup` builds `prisma/mirror/schema.prisma` (MySQL) from the main schema and pushes it
-  - `npm run mirror:sync` copies every table Neon → local MySQL in one transaction, saves a daily JSON snapshot (keeps 30), logs to `backups/mirror-sync.log`
+- [x] **Sep 2026:** Local database mirror of production (MySQL or SQL Server, chosen by `MIRROR_DATABASE_URL`)
+  - `npm run mirror:setup` builds `prisma/mirror/schema.prisma` from the main schema and pushes it
+  - SQL Server adaptation: enums → NVARCHAR, NVARCHAR for text, no DB-level FKs, plain INT ids
+  - `npm run mirror:sync` copies every table Neon → local mirror in one transaction, saves a daily JSON snapshot (keeps 30), logs to `backups/mirror-sync.log`
   - Shrink guard: aborts if production has < 50% of the mirror's rows (protects against a wiped host)
   - `scripts/mirror/register-daily-task.ps1` registers a daily Windows Scheduled Task
 - [x] Stopped committing `backend/dist` (Render builds it); docs updated for PostgreSQL
@@ -141,7 +142,7 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL: a Neon branch, or `docker compose up -d postgres`
-- (Optional) MySQL 8 for the local mirror
+- (Optional) MySQL 8 or SQL Server for the local mirror
 
 ### Backend
 ```bash
@@ -159,7 +160,7 @@ npm install
 npm run dev                  # http://localhost:5173
 ```
 
-### Local MySQL mirror
+### Local database mirror
 ```bash
 cd backend
 npm run mirror:setup         # once, and after every schema migration
