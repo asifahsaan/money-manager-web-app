@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertCategoriesInAccount } from '../common/utils/ownership';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
 
@@ -54,6 +55,7 @@ export class BudgetsService {
 
   async create(userId: number, dto: CreateBudgetDto) {
     await this.verifyOwnership(dto.accountId, userId);
+    await assertCategoriesInAccount(this.prisma, dto.accountId, dto.categoryId);
     return this.prisma.budget.create({
       data: {
         accountId: dto.accountId,

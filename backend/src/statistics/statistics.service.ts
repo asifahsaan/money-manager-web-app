@@ -20,15 +20,15 @@ export class StatisticsService {
   async getSummary(userId: number, accountId: number, startDate: string, endDate: string) {
     await this.verifyOwnership(accountId, userId);
 
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T23:59:59');
+    const start = new Date(startDate + 'T00:00:00.000Z');
+    const end = new Date(endDate + 'T23:59:59.999Z');
 
     const txs = await this.prisma.transaction.findMany({
       where: {
         accountId,
         type: { in: ['INCOME', 'EXPENSE'] },
         date: { gte: start, lte: end },
-        OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
+        isOpeningBalance: false,
       },
       select: {
         id: true,
@@ -151,7 +151,7 @@ export class StatisticsService {
         accountId,
         type: { in: ['INCOME', 'EXPENSE'] },
         date: { gte: start, lte: end },
-        OR: [{ description: { not: 'Opening Balance' } }, { description: null }],
+        isOpeningBalance: false,
       },
       select: { type: true, amount: true, date: true },
     });

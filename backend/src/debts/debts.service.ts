@@ -5,6 +5,7 @@ import { UpdateDebtDto } from './dto/update-debt.dto';
 import { UpdateDebtEntryDto } from './dto/update-debt-entry.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
 import { DebtStatus } from '@prisma/client';
+import { assertWalletsInAccount } from '../common/utils/ownership';
 
 @Injectable()
 export class DebtsService {
@@ -29,7 +30,8 @@ export class DebtsService {
 
   async create(userId: number, dto: CreateDebtDto) {
     await this.verifyOwnership(dto.accountId, userId);
-    const txDate = new Date(dto.date + 'T00:00:00');
+    await assertWalletsInAccount(this.prisma, dto.accountId, dto.walletId);
+    const txDate = new Date(dto.date + 'T00:00:00.000Z');
 
     const categoryId = dto.walletId
       ? await this.findDebtCategory(dto.accountId, dto.type === 'RECEIVABLE' ? 'Loan' : 'Debt collection')
@@ -94,6 +96,7 @@ export class DebtsService {
 
   async update(id: number, userId: number, dto: UpdateDebtDto) {
     const debt = await this.findAndVerify(id, userId);
+    await assertWalletsInAccount(this.prisma, debt.accountId, dto.walletId);
 
     // Recalculate remaining if totalAmount changes
     let totalAmount: number | undefined;
@@ -125,6 +128,7 @@ export class DebtsService {
     const amount = dto.amount;
     const remaining = Number(debt.remainingAmount);
     if (amount > remaining) throw new BadRequestException(`Amount exceeds remaining: ${remaining}`);
+    await assertWalletsInAccount(this.prisma, debt.accountId, dto.walletId);
 
     // PAYABLE: paying back → EXPENSE ("Loan"); RECEIVABLE: collecting → INCOME ("Debt collection")
     const payCategoryId = await this.findDebtCategory(
@@ -135,7 +139,7 @@ export class DebtsService {
     return this.prisma.$transaction(async (tx) => {
       const txType = debt.type === 'PAYABLE' ? 'EXPENSE' : 'INCOME';
 
-      const txDate = new Date(dto.date + 'T00:00:00');
+      const txDate = new Date(dto.date + 'T00:00:00.000Z');
       const transaction = await tx.transaction.create({
         data: {
           accountId: debt.accountId,
@@ -187,6 +191,7 @@ export class DebtsService {
 
     const entry = await this.prisma.debtEntry.findUnique({ where: { id: entryId } });
     if (!entry || entry.debtId !== debt.id) throw new NotFoundException('Entry not found');
+    await assertWalletsInAccount(this.prisma, debt.accountId, dto.walletId);
 
     const walletChanged = dto.walletId !== undefined && dto.walletId !== entry.walletId;
 

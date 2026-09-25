@@ -34,7 +34,7 @@ A full-stack personal finance management application with expense tracking, budg
 | Charts | Recharts |
 | Backend | NestJS, Prisma ORM |
 | Database | PostgreSQL (Neon) — plus a local MySQL / SQL Server mirror for backups |
-| Auth | JWT (access + refresh tokens) |
+| Auth | JWT (7-day access token, re-validated per request), rate-limited login |
 | Mobile | Capacitor (Android) |
 | Deployment | Vercel (frontend) + Render (backend) + Neon (PostgreSQL) |
 

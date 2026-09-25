@@ -66,7 +66,16 @@ export class CategoriesService {
   }
 
   async update(id: number, userId: number, dto: UpdateCategoryDto): Promise<Category> {
-    await this.findCategoryAndVerify(id, userId);
+    const category = await this.findCategoryAndVerify(id, userId);
+    if (dto.parentCategoryId !== undefined && dto.parentCategoryId !== null) {
+      const parent = await this.prisma.category.findUnique({ where: { id: dto.parentCategoryId } });
+      if (!parent || parent.accountId !== category.accountId || parent.id === id) {
+        throw new BadRequestException('Parent category not found');
+      }
+      if (parent.parentCategoryId !== null) {
+        throw new BadRequestException('Subcategories cannot have nested subcategories');
+      }
+    }
     return this.prisma.category.update({
       where: { id },
       data: {

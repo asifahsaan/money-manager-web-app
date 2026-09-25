@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { GoalEntryDto } from './dto/goal-entry.dto';
+import { assertWalletsInAccount } from '../common/utils/ownership';
 
 @Injectable()
 export class GoalsService {
@@ -27,6 +28,7 @@ export class GoalsService {
 
   async create(userId: number, dto: CreateGoalDto) {
     await this.verifyOwnership(dto.accountId, userId);
+    await assertWalletsInAccount(this.prisma, dto.accountId, dto.walletId);
     return this.prisma.goal.create({
       data: {
         accountId: dto.accountId,
@@ -42,6 +44,7 @@ export class GoalsService {
 
   async update(id: number, userId: number, dto: UpdateGoalDto) {
     const goal = await this.findAndVerify(id, userId);
+    await assertWalletsInAccount(this.prisma, goal.accountId, dto.walletId);
     return this.prisma.goal.update({
       where: { id: goal.id },
       data: {
@@ -61,11 +64,11 @@ export class GoalsService {
 
     return this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({ where: { id: dto.walletId } });
-      if (!wallet) throw new NotFoundException('Wallet not found');
+      if (!wallet || wallet.accountId !== goal.accountId) throw new NotFoundException('Wallet not found');
       if (Number(wallet.currentBalance) < amount)
         throw new BadRequestException('Insufficient wallet balance');
 
-      const txDate = new Date(dto.date + 'T00:00:00');
+      const txDate = new Date(dto.date + 'T00:00:00.000Z');
       const transaction = await tx.transaction.create({
         data: {
           accountId: goal.accountId,
@@ -111,9 +114,10 @@ export class GoalsService {
 
     if (Number(goal.savedAmount) < amount)
       throw new BadRequestException('Insufficient saved amount');
+    await assertWalletsInAccount(this.prisma, goal.accountId, dto.walletId);
 
     return this.prisma.$transaction(async (tx) => {
-      const txDate = new Date(dto.date + 'T00:00:00');
+      const txDate = new Date(dto.date + 'T00:00:00.000Z');
       const transaction = await tx.transaction.create({
         data: {
           accountId: goal.accountId,

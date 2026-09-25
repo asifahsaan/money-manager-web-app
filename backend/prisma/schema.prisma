@@ -222,6 +222,10 @@ model Transaction {
   toWallet     Wallet? @relation("TransactionToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
   feeAmount    Decimal @default(0) @db.Decimal(18, 2)
 
+  // Auto-created when a wallet is opened with a starting balance; hidden from
+  // lists and excluded from income statistics.
+  isOpeningBalance Boolean @default(false)
+
   // Optional links
   recurringId Int?
   recurring   Recurring? @relation(fields: [recurringId], references: [id], onDelete: SetNull)

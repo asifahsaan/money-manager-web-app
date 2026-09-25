@@ -9,6 +9,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { QueryTransactionDto } from './dto/query-transaction.dto';
 import { Transaction, TransactionType, Prisma } from '@prisma/client';
+import { assertWalletsInAccount, assertCategoriesInAccount } from '../common/utils/ownership';
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -26,10 +27,7 @@ export class TransactionsService {
   private buildWhere(query: QueryTransactionDto): Prisma.TransactionWhereInput {
     const where: Prisma.TransactionWhereInput = {
       accountId: query.accountId,
-      OR: [
-        { description: { not: 'Opening Balance' } },
-        { description: null },
-      ],
+      isOpeningBalance: false,
     };
 
     if (query.type) where.type = query.type;
@@ -51,9 +49,9 @@ export class TransactionsService {
         ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
         {
           OR: [
-            { description: { contains: query.search } },
-            { memo: { contains: query.search } },
-            { category: { name: { contains: query.search } } },
+            { description: { contains: query.search, mode: 'insensitive' } },
+            { memo: { contains: query.search, mode: 'insensitive' } },
+            { category: { name: { contains: query.search, mode: 'insensitive' } } },
           ],
         },
       ];
@@ -129,7 +127,8 @@ export class TransactionsService {
 
   async create(userId: number, dto: CreateTransactionDto) {
     await this.verifyAccountOwnership(dto.accountId, userId);
-    await this.validateWallets(dto.accountId, dto);
+    await assertWalletsInAccount(this.prisma, dto.accountId, dto.walletId, dto.fromWalletId, dto.toWalletId);
+    await assertCategoriesInAccount(this.prisma, dto.accountId, dto.categoryId);
 
     const { datetime, date } = this.buildDates(dto.date, dto.time);
 
@@ -160,6 +159,8 @@ export class TransactionsService {
 
   async update(id: number, userId: number, dto: UpdateTransactionDto) {
     const existing = await this.findOne(id, userId);
+    await assertWalletsInAccount(this.prisma, existing.accountId, dto.walletId, dto.fromWalletId, dto.toWalletId);
+    await assertCategoriesInAccount(this.prisma, existing.accountId, dto.categoryId);
 
     return this.prisma.$transaction(async (tx) => {
       // Reverse old balance effect
@@ -304,24 +305,6 @@ export class TransactionsService {
       datetime: new Date(datetimeStr + 'Z'),
       date: new Date(dateStr + 'T00:00:00.000Z'),
     };
-  }
-
-  private async validateWallets(
-    accountId: number,
-    dto: CreateTransactionDto | UpdateTransactionDto,
-  ): Promise<void> {
-    const walletIds = [
-      (dto as CreateTransactionDto).walletId,
-      (dto as CreateTransactionDto).fromWalletId,
-      (dto as CreateTransactionDto).toWalletId,
-    ].filter((id): id is number => id !== undefined && id !== null);
-
-    for (const wid of walletIds) {
-      const wallet = await this.prisma.wallet.findUnique({ where: { id: wid } });
-      if (!wallet || wallet.accountId !== accountId) {
-        throw new BadRequestException(`Wallet ${wid} not found in this account`);
-      }
-    }
   }
 
   private async verifyAccountOwnership(accountId: number, userId: number): Promise<void> {

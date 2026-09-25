@@ -2,12 +2,20 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Render/Vercel sit behind one proxy hop — use the real client IP for rate limits
+  app.set('trust proxy', 1);
+
+  // Security headers. Cross-origin resource policy stays open so the Vercel
+  // frontend and the Android app can still load /uploads images.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   // Serve uploaded attachments
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });

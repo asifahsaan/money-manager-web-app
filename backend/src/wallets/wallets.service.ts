@@ -50,7 +50,8 @@ export class WalletsService {
         });
 
         const now = new Date();
-        const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        // UTC midnight, like every other DATE column (see transactions buildDates)
+        const dateOnly = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
         await tx.transaction.create({
           data: {
@@ -60,6 +61,7 @@ export class WalletsService {
             date: dateOnly,
             datetime: now,
             description: 'Opening Balance',
+            isOpeningBalance: true,
             walletId: wallet.id,
           },
         });

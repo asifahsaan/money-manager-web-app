@@ -118,7 +118,7 @@ export class AdminService {
 
   async getUsers(search?: string, page = 1, limit = 20) {
     const where = search
-      ? { OR: [{ name: { contains: search } }, { email: { contains: search } }] }
+      ? { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { email: { contains: search, mode: 'insensitive' as const } }] }
       : {};
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({

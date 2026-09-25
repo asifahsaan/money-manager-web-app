@@ -4,6 +4,7 @@ import { CreateRecurringDto } from './dto/create-recurring.dto';
 import { UpdateRecurringDto } from './dto/update-recurring.dto';
 import { RecurringFrequency } from '@prisma/client';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import { assertWalletsInAccount, assertCategoriesInAccount } from '../common/utils/ownership';
 
 @Injectable()
 export class RecurringsService {
@@ -20,6 +21,8 @@ export class RecurringsService {
 
   async create(userId: number, dto: CreateRecurringDto) {
     await this.verifyOwnership(dto.accountId, userId);
+    await assertWalletsInAccount(this.prisma, dto.accountId, dto.walletId, dto.fromWalletId, dto.toWalletId);
+    await assertCategoriesInAccount(this.prisma, dto.accountId, dto.categoryId);
     const startDate = new Date(dto.startDate);
     return this.prisma.recurring.create({
       data: {
@@ -43,6 +46,7 @@ export class RecurringsService {
 
   async update(id: number, userId: number, dto: UpdateRecurringDto) {
     const r = await this.findAndVerify(id, userId);
+    await assertCategoriesInAccount(this.prisma, r.accountId, dto.categoryId);
     return this.prisma.recurring.update({
       where: { id: r.id },
       data: {

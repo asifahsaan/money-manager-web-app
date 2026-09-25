@@ -68,6 +68,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account has been disabled');
+    }
+
     const token = this.signToken(user.id, user.email, user.name);
 
     return {

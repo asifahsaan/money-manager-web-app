@@ -125,6 +125,32 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
   - `scripts/mirror/register-daily-task.ps1` registers a daily Windows Scheduled Task
 - [x] Stopped committing `backend/dist` (Render builds it); docs updated for PostgreSQL
 
+## Security & Correctness Hardening (Sep 2026) — ✅ COMPLETE
+
+Found in a full code review; verified end-to-end against an isolated Postgres (19/19 checks).
+
+- [x] **Cross-account tampering fixed** — every `walletId` / `categoryId` / `parentCategoryId` in
+  transactions (create + update), goals, debts, recurrings, budgets and categories must belong to the
+  same account (`src/common/utils/ownership.ts`). Before: any user could change another user's wallet
+  balance by guessing its id.
+- [x] App refuses to start without `JWT_SECRET` (no more `'fallback-secret'`)
+- [x] Deactivated / deleted users are rejected at login and on every request (JWT re-validated)
+- [x] Rate limiting (`@nestjs/throttler`): 300 req/min/IP globally, login 10/15 min, register 5/hour,
+  change password/email 5/15 min; `trust proxy` set for Render
+- [x] `helmet` security headers (cross-origin resource policy kept open for `/uploads` images)
+- [x] Search is case-insensitive again (lost in the MySQL → PostgreSQL switch)
+- [x] Opening balance marked by `transactions.isOpeningBalance` (migration `20260926000000`, backfilled)
+  instead of matching the description text — fixes it reappearing under the wallet filter and
+  user transactions named "Opening Balance" disappearing
+- [x] Goal/debt/statistics dates parsed as UTC (same fix as transactions had)
+
+### Still open from the review
+- Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
+- No automated tests; no wallet-balance reconciliation job
+- Money math uses `Number()` in debt/goal services instead of Decimal
+- Recurring transactions only run when executed manually
+- Render free-tier cold starts; onboarding; privacy policy / account deletion / data export
+
 ---
 
 ## Bug Fixes Applied
