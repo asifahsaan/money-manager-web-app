@@ -1,63 +1,55 @@
 import type { Config } from 'tailwindcss';
 
+// Every color resolves to a CSS variable (src/styles/tokens.css + src/index.css)
+// so the same class works in light and dark mode. `rgb(var(--x) / <alpha-value>)`
+// keeps opacity modifiers like bg-gray-900/40 working.
+const v = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
+const SHADES = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+const palette = (name: string) => Object.fromEntries(SHADES.map((s) => [s, v(`${name}-${s}`)]));
+
+const PALETTES = ['red', 'orange', 'yellow', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'violet', 'purple', 'pink', 'rose'];
+
 const config: Config = {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: '#FBBF24',
-          50: '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#FDE68A',
-          300: '#FCD34D',
-          400: '#FBBF24',
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
-          800: '#92400E',
-          900: '#78350F',
-        },
-        income: {
-          DEFAULT: '#3B82F6',
-          light: '#EFF6FF',
-          dark: '#1D4ED8',
-        },
-        expense: {
-          DEFAULT: '#EF4444',
-          light: '#FEF2F2',
-          dark: '#B91C1C',
-        },
-        transfer: {
-          DEFAULT: '#6B7280',
-          light: '#F9FAFB',
-        },
-        success: {
-          DEFAULT: '#10B981',
-          light: '#ECFDF5',
-        },
+        ...Object.fromEntries(PALETTES.map((p) => [p, palette(p)])),
+        gray: palette('gray'),
+        slate: palette('gray'),
+        // Brand. `amber` is the pre-redesign accent class name — kept as an alias
+        // so older screens pick up the brand color automatically.
+        primary: { DEFAULT: v('brand-600'), ...palette('brand') },
+        amber: palette('brand'),
+        canvas: v('canvas'),
+        surface: { DEFAULT: v('surface'), raised: v('surface-raised') },
+        line: v('border'),
+        ink: { DEFAULT: v('text'), muted: v('text-muted') },
+        income: { DEFAULT: v('income'), light: v('income-soft'), dark: v('income-strong') },
+        expense: { DEFAULT: v('expense'), light: v('expense-soft'), dark: v('expense-strong') },
+        transfer: { DEFAULT: v('transfer'), light: v('gray-100') },
+        success: { DEFAULT: v('income'), light: v('income-soft') },
         app: {
-          bg: '#F8FAFC',
-          card: '#FFFFFF',
-          border: '#E5E7EB',
-          text: '#111827',
-          'text-secondary': '#6B7280',
+          bg: v('canvas'),
+          card: v('surface'),
+          border: v('border'),
+          text: v('text'),
+          'text-secondary': v('text-muted'),
         },
       },
       fontFamily: {
-        sans: [
-          'Inter',
-          'ui-sans-serif',
-          'system-ui',
-          '-apple-system',
-          'sans-serif',
-        ],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      borderRadius: {
+        card: '16px',
       },
       boxShadow: {
-        card: '0 8px 22px rgba(15, 23, 42, 0.05)',
-        'card-hover': '0 14px 35px rgba(15, 23, 42, 0.10)',
-        elevated: '0 14px 35px rgba(15, 23, 42, 0.08)',
-        fab: '0 18px 40px rgba(217, 119, 6, 0.32)',
+        card: '0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.04)',
+        'card-hover': '0 4px 16px rgb(15 23 42 / 0.08)',
+        elevated: '0 12px 32px rgb(15 23 42 / 0.12)',
+        fab: '0 10px 24px rgb(79 70 229 / 0.35)',
       },
     },
   },

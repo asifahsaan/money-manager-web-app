@@ -98,7 +98,7 @@ export function BudgetTab() {
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', color: '#78350f', boxShadow: '0 8px 20px rgba(217,119,6,0.2)' }}
+          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
         >
           <Plus size={15} /> Add Budget
         </button>
@@ -150,7 +150,7 @@ export function BudgetTab() {
               </div>
               <button type="submit" disabled={createMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Save Budget'}
               </button>
             </form>
@@ -209,7 +209,7 @@ function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
           className="h-2 rounded-full transition-all"
           style={{
             width: `${Math.min(100, pct)}%`,
-            background: pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : 'linear-gradient(90deg, #fbbf24, #f97316)',
+            background: pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : 'rgb(var(--c-brand-600))',
           }}
         />
       </div>

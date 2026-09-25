@@ -33,7 +33,7 @@ export function LoginPage() {
       if (res.success && res.data) {
         setAuth(res.data.user, res.data.token);
         toast.success('Welcome back!');
-        navigate('/transactions', { replace: true });
+        navigate('/overview', { replace: true });
       }
     } catch (err: unknown) {
       const message =
@@ -45,7 +45,7 @@ export function LoginPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-app-text mb-1">Welcome back</h2>
+      <h2 className="text-2xl font-semibold tracking-tight text-app-text mb-1">Welcome back</h2>
       <p className="text-sm text-app-text-secondary mb-6">
         Sign in to your account
       </p>

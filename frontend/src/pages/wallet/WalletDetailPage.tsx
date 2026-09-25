@@ -103,7 +103,7 @@ export function WalletDetailPage() {
         style={{
           background: wallet?.color
             ? `linear-gradient(135deg, ${wallet.color}dd, ${wallet.color}99)`
-            : 'linear-gradient(135deg, #FBBF24dd, #F59E0B99)',
+            : 'rgb(var(--c-brand-600))',
         }}
       >
         <div className="flex items-center gap-3 mb-4">

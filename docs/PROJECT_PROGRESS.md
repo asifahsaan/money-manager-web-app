@@ -147,6 +147,20 @@ Found in a full code review; verified end-to-end against an isolated Postgres (1
 - [x] **What's New** panel in the header — full release history (v1.0.0 → v1.6.0) from
   `frontend/src/data/releases.ts`, red dot until the user opens the latest release
 
+## UI/UX Redesign — v1.7.0 (Sep 2026) — ✅ COMPLETE
+
+- [x] Token-based design system (CSS variables) — brand moved from amber to indigo for WCAG-AA
+  contrast on buttons; income = emerald, expense = rose
+- [x] Dark mode (light / dark / system), no flash on load; Appearance setting in Settings
+- [x] New app shell: sidebar with user card, header with page title + "Add transaction",
+  5-tab mobile nav, collapsible sidebar remembered
+- [x] New **Overview** home: net worth, income/expense vs last month, savings rate, 6-month cash
+  flow, wallets, recent transactions, top spending, budgets, goals
+- [x] Split-screen login/register; landing page on the new brand
+- [x] Bundle: route code-splitting + curated icon map — first load 427 KB → 167 KB gzip
+- [x] Fixed: all category icons rendered as "Tag"; stale stats/calendar/budgets after adding a
+  transaction; "Rs." wrapping onto its own line; E-wallet icon never matched
+
 ### Still open from the review
 - Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
 - No automated tests; no wallet-balance reconciliation job

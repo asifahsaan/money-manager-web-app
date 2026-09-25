@@ -127,7 +127,7 @@ export function GoalsTab() {
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', color: '#78350f', boxShadow: '0 8px 20px rgba(217,119,6,0.2)' }}
+          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
         >
           <Plus size={15} /> Add Goal
         </button>
@@ -182,7 +182,7 @@ export function GoalsTab() {
               </div>
               <button type="submit" disabled={createMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Goal'}
               </button>
             </form>
@@ -230,7 +230,7 @@ export function GoalsTab() {
               </div>
               <button type="submit" disabled={entryMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {entryMutation.isPending ? 'Processing…' : `Confirm ${entryType}`}
               </button>
             </form>
@@ -290,7 +290,7 @@ export function GoalsTab() {
                   <button
                     onClick={() => { setSelectedGoal(g); setEntryType('deposit'); resetEntry(); }}
                     className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', boxShadow: '0 6px 16px rgba(217,119,6,0.2)' }}
+                    style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' }}
                   >
                     <TrendingUp size={12} /> Deposit
                   </button>

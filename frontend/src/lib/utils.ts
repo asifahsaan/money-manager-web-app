@@ -7,8 +7,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatCurrency(amount: string | number, currency = 'Rs.'): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return `${currency} 0`;
-  return `${currency} ${num.toLocaleString('en-PK', {
+  // Non-breaking space: "Rs." must never wrap away from its number
+  if (isNaN(num)) return `${currency} 0`;
+  return `${currency} ${num.toLocaleString('en-PK', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;

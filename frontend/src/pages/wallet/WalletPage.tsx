@@ -345,9 +345,9 @@ export function WalletPage() {
               onClick={openAdd}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
               style={{
-                background: 'linear-gradient(135deg, #fbbf24, #f97316)',
-                color: '#78350f',
-                boxShadow: '0 8px 20px rgba(217,119,6,0.25)',
+                background: 'rgb(var(--c-brand-600))',
+                color: '#ffffff',
+                boxShadow: '0 8px 20px rgba(79,70,229,0.25)',
               }}
             >
               <Plus size={15} /> Add Wallet
@@ -625,7 +625,7 @@ export function WalletPage() {
                 type="submit"
                 disabled={saveMutation.isPending}
                 className="w-full py-3 rounded-xl font-semibold text-amber-900 disabled:opacity-60 transition-all active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', boxShadow: '0 10px 25px rgba(217,119,6,0.25)' }}
+                style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 10px 25px rgba(79,70,229,0.25)' }}
               >
                 {saveMutation.isPending ? 'Saving...' : editing ? 'Update Wallet' : 'Create Wallet'}
               </button>

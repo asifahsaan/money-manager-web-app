@@ -127,7 +127,7 @@ export function AdminPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#fbbf24,#f97316)' }}>
+            style={{ background: 'rgb(var(--c-brand-600))' }}>
             <Shield size={16} color="white" />
           </div>
           <div>

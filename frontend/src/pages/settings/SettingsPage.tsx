@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { LogOut, User as UserIcon, Lock, Wallet, Mail } from 'lucide-react';
+import { LogOut, User as UserIcon, Lock, Wallet, Mail, Palette } from 'lucide-react';
+import { ThemeSegmented } from '@/components/shared/ThemeToggle';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
 import { userService } from '@/services/user.service';
@@ -124,8 +125,19 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto p-4 space-y-6">
-      <h2 className="text-lg font-semibold text-gray-800">Settings</h2>
+    <div className="max-w-xl mx-auto p-4 lg:p-6 space-y-5">
+      {/* Appearance */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Palette size={16} /> Appearance
+            </div>
+            <p className="mt-1 text-xs text-gray-500">System follows your phone or computer setting.</p>
+          </div>
+          <ThemeSegmented />
+        </div>
+      </section>
 
       {/* Profile */}
       <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">

@@ -169,7 +169,7 @@ export function CalendarPage() {
                 'min-h-[80px] rounded-2xl p-2 flex flex-col items-center gap-0.5 border transition-all',
                 !inMonth && 'opacity-30',
                 isSelected
-                  ? 'border-amber-400 bg-amber-50 shadow-[0_0_0_2px_#fbbf24]'
+                  ? 'border-amber-400 bg-amber-50 shadow-[0_0_0_2px_rgb(var(--c-brand-500))]'
                   : todayDay
                   ? 'border-amber-200 bg-amber-50/50 hover:border-amber-300'
                   : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30',
@@ -237,9 +237,9 @@ export function CalendarPage() {
                   onClick={() => setAddingDate(format(selectedDay, 'yyyy-MM-dd'))}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                   style={{
-                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                    color: '#78350f',
-                    boxShadow: '0 6px 16px rgba(217,119,6,0.25)',
+                    background: 'rgb(var(--c-brand-600))',
+                    color: '#ffffff',
+                    boxShadow: '0 6px 16px rgba(79,70,229,0.25)',
                   }}
                 >
                   <Plus size={13} />

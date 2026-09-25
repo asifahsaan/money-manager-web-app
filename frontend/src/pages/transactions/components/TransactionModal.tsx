@@ -3,6 +3,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invalidateMoneyQueries } from '@/lib/queries';
+import { CATEGORY_ICON_NAMES } from '@/lib/category-icons';
 import toast from 'react-hot-toast';
 import { X, ChevronDown, Search, Plus, Check, Trash2, Paperclip, Loader2, Tag } from 'lucide-react';
 import { format } from 'date-fns';
@@ -111,8 +113,7 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
     mutationFn: () => transactionService.delete(editing!.id),
     onSuccess: () => {
       toast.success('Transaction deleted');
-      queryClient.invalidateQueries({ queryKey: ['transactions', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['wallets', accountId] });
+      void invalidateMoneyQueries(queryClient);
       onClose();
     },
     onError: () => toast.error('Failed to delete'),
@@ -144,8 +145,7 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
       }
 
       toast.success(editing ? 'Transaction updated' : 'Transaction added');
-      queryClient.invalidateQueries({ queryKey: ['transactions', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['wallets', accountId] });
+      void invalidateMoneyQueries(queryClient);
       onClose();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -406,13 +406,7 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
 
 // ─── Category Picker ──────────────────────────────────────────────────────────
 
-const ICON_OPTIONS = [
-  'tag', 'bus', 'utensils', 'zap', 'home', 'shopping-cart', 'credit-card',
-  'shirt', 'graduation-cap', 'gamepad-2', 'dumbbell', 'gift', 'heart-pulse',
-  'sofa', 'wallet-2', 'lightbulb', 'banknote', 'trending-up', 'award',
-  'bar-chart-2', 'star', 'hand-coins', 'grid-2x2', 'car', 'plane', 'coffee',
-  'pizza', 'book', 'music', 'camera', 'phone', 'tv', 'wifi', 'shield',
-];
+const ICON_OPTIONS = CATEGORY_ICON_NAMES;
 
 const COLOR_OPTIONS = [
   '#F97316', '#EAB308', '#3B82F6', '#10B981', '#8B5CF6',

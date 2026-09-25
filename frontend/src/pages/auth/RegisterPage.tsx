@@ -59,7 +59,7 @@ export function RegisterPage() {
         }
 
         toast.success('Account created! Welcome to Money Manager.');
-        navigate('/transactions', { replace: true });
+        navigate('/overview', { replace: true });
       }
     } catch (err: unknown) {
       const message =
@@ -71,7 +71,7 @@ export function RegisterPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-app-text mb-1">Create account</h2>
+      <h2 className="text-2xl font-semibold tracking-tight text-app-text mb-1">Create account</h2>
       <p className="text-sm text-app-text-secondary mb-6">
         Start tracking your finances today
       </p>

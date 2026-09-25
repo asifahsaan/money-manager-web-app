@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 
-const GRADIENT = 'linear-gradient(135deg, #fbbf24, #f97316)';
+const GRADIENT = 'linear-gradient(135deg, rgb(var(--c-brand-500)), rgb(var(--c-violet-600)))';
 
 const FEATURES = [
   { icon: Wallet, title: 'Multi-Wallet Management', desc: 'Track bank accounts, cash, and e-wallets separately — Alfala, Meezan, Jazzcash, or any wallet you use — with live balances.' },
@@ -49,7 +49,7 @@ export function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Logged-in users go straight to the app
-  if (user) return <Navigate to="/transactions" replace />;
+  if (user) return <Navigate to="/overview" replace />;
 
   const navLinks = [
     { href: '#features', label: 'Features' },
@@ -89,7 +89,7 @@ export function LandingPage() {
             <Link to="/login" className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-amber-50 hover:text-amber-700 transition-colors">
               Login
             </Link>
-            <Link to="/register" className="px-4 py-2 rounded-xl text-xs font-bold text-amber-900 shadow-md active:scale-95 transition-all"
+            <Link to="/register" className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition-all"
               style={{ background: GRADIENT }}>
               Register Free
             </Link>
@@ -112,7 +112,7 @@ export function LandingPage() {
             ))}
             <div className="flex gap-2 pt-2">
               <Link to="/login" className="flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-bold text-gray-600 bg-gray-100">Login</Link>
-              <Link to="/register" className="flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-bold text-amber-900" style={{ background: GRADIENT }}>
+              <Link to="/register" className="flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: GRADIENT }}>
                 Register Free
               </Link>
             </div>
@@ -138,8 +138,8 @@ export function LandingPage() {
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
           <Link to="/register"
-            className="px-8 py-3.5 rounded-2xl font-bold text-sm text-amber-900 shadow-lg active:scale-95 transition-all"
-            style={{ background: GRADIENT, boxShadow: '0 12px 30px rgba(217,119,6,0.3)' }}>
+            className="px-8 py-3.5 rounded-2xl font-bold text-sm text-white shadow-lg active:scale-95 transition-all"
+            style={{ background: GRADIENT, boxShadow: '0 12px 30px rgba(79,70,229,0.3)' }}>
             Get Started — It's Free
           </Link>
           <a href="#features"
@@ -221,7 +221,7 @@ export function LandingPage() {
               designed around how people here actually manage money — cash plus banks plus e-wallets,
               lending between friends and family, and monthly budgets that matter.
             </p>
-            <Link to="/register" className="inline-block mt-6 px-6 py-3 rounded-2xl font-bold text-sm text-amber-900 shadow-lg active:scale-95 transition-all"
+            <Link to="/register" className="inline-block mt-6 px-6 py-3 rounded-2xl font-bold text-sm text-white shadow-lg active:scale-95 transition-all"
               style={{ background: GRADIENT }}>
               Start Tracking Today
             </Link>
@@ -266,9 +266,9 @@ export function LandingPage() {
       {/* ── Contact ── */}
       <section id="contact" className="max-w-6xl mx-auto px-4 sm:px-6 py-16 scroll-mt-20">
         <div className="rounded-3xl p-8 sm:p-12 text-center shadow-xl" style={{ background: GRADIENT }}>
-          <Mail size={32} className="mx-auto mb-4 text-amber-900" />
-          <h2 className="text-2xl sm:text-3xl font-black text-amber-950">Have a question or feedback?</h2>
-          <p className="text-sm text-amber-900/80 mt-2 max-w-md mx-auto">
+          <Mail size={32} className="mx-auto mb-4 text-white" />
+          <h2 className="text-2xl sm:text-3xl font-black text-white">Have a question or feedback?</h2>
+          <p className="text-sm text-white/80 mt-2 max-w-md mx-auto">
             We'd love to hear from you — feature requests, bug reports, or just to say salam.
           </p>
           <a href="mailto:asifahsaan1@gmail.com?subject=Money%20Manager%20—%20Contact"

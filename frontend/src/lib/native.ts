@@ -12,7 +12,7 @@ export async function setupNativeApp() {
 
   try {
     await StatusBar.setStyle({ style: Style.Light });
-    await StatusBar.setBackgroundColor({ color: '#f97316' });
+    await StatusBar.setBackgroundColor({ color: '#4f46e5' });
   } catch {
     // StatusBar plugin unavailable (e.g. web) — ignore
   }

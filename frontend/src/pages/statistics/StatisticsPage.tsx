@@ -13,8 +13,7 @@ import { useAccountStore } from '@/stores/account.store';
 import { statisticsService, CategoryBreakdownItem, TransactionItem } from '@/services/statistics.service';
 import { walletService } from '@/services/wallet.service';
 import { formatCurrency, cn } from '@/lib/utils';
-import * as LucideIcons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
+import { resolveIcon } from '@/lib/category-icons';
 
 type Period = 'monthly' | 'quarterly' | 'yearly' | 'custom';
 
@@ -23,26 +22,6 @@ const DONUT_COLORS = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
   '#6B7280', '#84CC16',
 ];
-
-function resolveIcon(name: string | null): React.ComponentType<LucideProps> {
-  if (!name) return LucideIcons.Tag as React.ComponentType<LucideProps>;
-  if (name in LucideIcons) {
-    const ic = LucideIcons[name as keyof typeof LucideIcons];
-    if (typeof ic === 'function') return ic as React.ComponentType<LucideProps>;
-  }
-  const pascal = name.split('-').map((w) => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join('');
-  if (pascal in LucideIcons) {
-    const ic = LucideIcons[pascal as keyof typeof LucideIcons];
-    if (typeof ic === 'function') return ic as React.ComponentType<LucideProps>;
-  }
-  const lower = pascal.toLowerCase();
-  const key = Object.keys(LucideIcons).find((k) => k.toLowerCase() === lower);
-  if (key) {
-    const ic = LucideIcons[key as keyof typeof LucideIcons];
-    if (typeof ic === 'function') return ic as React.ComponentType<LucideProps>;
-  }
-  return LucideIcons.Tag as React.ComponentType<LucideProps>;
-}
 
 function abbrev(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -221,7 +200,7 @@ export function StatisticsPage() {
                   'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all capitalize',
                   period === p ? 'text-amber-800 shadow-sm' : 'text-gray-400 hover:text-gray-600',
                 )}
-                style={period === p ? { background: 'linear-gradient(135deg, #fef3c7, #fffbeb)', boxShadow: '0 4px 12px rgba(251,191,36,0.18)' } : {}}>
+                style={period === p ? { background: 'rgb(var(--c-brand-50))', boxShadow: '0 0 0 1px rgb(var(--c-brand-200))' } : {}}>
                 {p}
               </button>
             ))}
@@ -292,7 +271,7 @@ export function StatisticsPage() {
       </div>
 
       {/* ── Expense Structure + Income Structure (50/50) ── */}
-      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-2 lg:items-start gap-4 shrink-0">
+      <div className="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 xl:items-start gap-4 shrink-0">
         <StructurePanel
           title="Expense Structure"
           type="expense"
@@ -474,7 +453,7 @@ export function StatisticsPage() {
                     'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all capitalize',
                     modalTab === t ? 'text-amber-800 shadow-sm' : 'text-gray-400 hover:text-gray-600',
                   )}
-                  style={modalTab === t ? { background: 'linear-gradient(135deg,#fef3c7,#fffbeb)', boxShadow: '0 4px 12px rgba(251,191,36,.18)' } : {}}>
+                  style={modalTab === t ? { background: 'rgb(var(--c-brand-50))', boxShadow: '0 0 0 1px rgb(var(--c-brand-200))' } : {}}>
                   {t}
                 </button>
               ))}

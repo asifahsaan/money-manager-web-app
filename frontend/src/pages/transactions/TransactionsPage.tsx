@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Download, X, Wallet, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Download, X, Wallet, Eye, EyeOff, Banknote, Landmark, CreditCard, Smartphone, Briefcase, TrendingUp, TrendingDown, PiggyBank, type LucideIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -43,11 +43,11 @@ function groupByDate(transactions: Transaction[]): DayGroup[] {
     });
 }
 
-const WALLET_ICON: Record<string, string> = {
-  CASH: '💵',
-  BANK: '🏦',
-  CARD: '💳',
-  EWALLET: '📱',
+const WALLET_ICON: Record<string, LucideIcon> = {
+  CASH: Banknote,
+  BANK: Landmark,
+  CARD: CreditCard,
+  E_WALLET: Smartphone,
 };
 
 export function TransactionsPage() {
@@ -366,7 +366,7 @@ export function TransactionsPage() {
               <p className="text-[10px] text-gray-400 mt-0.5 font-bold">{includedWalletCount} wallets</p>
             </div>
             <div className="flex flex-col items-center gap-1.5 ml-2">
-              <div className="w-10 h-10 rounded-[14px] bg-gray-50 flex items-center justify-center text-base z-10">💼</div>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center z-10 text-ink-muted"><Briefcase size={18} /></div>
               <button onClick={() => toggleStat('balance')} className="text-gray-300 hover:text-gray-500 transition-colors">
                 {isStatHidden('balance') ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>
@@ -382,7 +382,7 @@ export function TransactionsPage() {
               <p className="text-[10px] text-gray-400 mt-0.5 font-bold">This month</p>
             </div>
             <div className="flex flex-col items-center gap-1.5 ml-2">
-              <div className="w-10 h-10 rounded-[14px] bg-gray-50 flex items-center justify-center text-base z-10">↗</div>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center z-10 text-ink-muted"><TrendingUp size={18} /></div>
               <button onClick={() => toggleStat('income')} className="text-gray-300 hover:text-gray-500 transition-colors">
                 {isStatHidden('income') ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>
@@ -398,7 +398,7 @@ export function TransactionsPage() {
               <p className="text-[10px] text-gray-400 mt-0.5 font-bold">This month</p>
             </div>
             <div className="flex flex-col items-center gap-1.5 ml-2">
-              <div className="w-10 h-10 rounded-[14px] bg-gray-50 flex items-center justify-center text-base z-10">↘</div>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center z-10 text-ink-muted"><TrendingDown size={18} /></div>
               <button onClick={() => toggleStat('expense')} className="text-gray-300 hover:text-gray-500 transition-colors">
                 {isStatHidden('expense') ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>
@@ -414,7 +414,7 @@ export function TransactionsPage() {
               <p className="text-[10px] text-gray-400 mt-0.5 font-bold">Income – expense</p>
             </div>
             <div className="flex flex-col items-center gap-1.5 ml-2">
-              <div className="w-10 h-10 rounded-[14px] bg-gray-50 flex items-center justify-center text-base z-10">✓</div>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center z-10 text-ink-muted"><PiggyBank size={18} /></div>
               <button onClick={() => toggleStat('net')} className="text-gray-300 hover:text-gray-500 transition-colors">
                 {isStatHidden('net') ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>
@@ -468,7 +468,7 @@ export function TransactionsPage() {
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <div
                     className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg, #fef3c7, #fffbeb)' }}
+                    style={{ background: 'rgb(var(--c-brand-50))' }}
                   >
                     <Plus size={26} className="text-amber-500" />
                   </div>
@@ -545,7 +545,7 @@ export function TransactionsPage() {
                 {wallets.filter((w) => !w.archived).slice(0, 4).map((w) => (
                   <div key={w.id} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-gray-50 border border-gray-100">
                     <div className="w-9 h-9 rounded-[14px] bg-amber-50 flex items-center justify-center text-base flex-shrink-0">
-                      {WALLET_ICON[w.type] ?? <Wallet size={16} className="text-amber-600" />}
+                      {(() => { const Icon = WALLET_ICON[w.type] ?? Wallet; return <Icon size={16} className="text-primary-600" />; })()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-gray-800 truncate">{w.name}</p>
@@ -623,7 +623,7 @@ export function TransactionsPage() {
                               width: `${pct}%`,
                               background: over
                                 ? 'linear-gradient(90deg, #ef4444, #dc2626)'
-                                : 'linear-gradient(90deg, #fbbf24, #f97316)',
+                                : 'rgb(var(--c-brand-600))',
                             }}
                           />
                         </div>
@@ -642,9 +642,9 @@ export function TransactionsPage() {
         onClick={openAdd}
         className="fixed bottom-20 right-5 lg:bottom-6 lg:right-6 z-40 w-14 h-14 rounded-[22px] flex items-center justify-center active:scale-95 transition-all"
         style={{
-          background: 'linear-gradient(135deg, #fbbf24, #f97316)',
-          boxShadow: '0 18px 40px rgba(217,119,6,0.32)',
-          color: '#78350f',
+          background: 'rgb(var(--c-brand-600))',
+          boxShadow: '0 18px 40px rgba(79,70,229,0.32)',
+          color: '#ffffff',
         }}
       >
         <Plus size={26} />

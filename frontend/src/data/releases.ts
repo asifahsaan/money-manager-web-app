@@ -15,6 +15,22 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.7.0',
+    date: '2026-09-26',
+    title: 'A fresh new look',
+    changes: [
+      { kind: 'new', text: 'Overview — your net worth, monthly cash flow, budgets, goals and recent activity on one screen.' },
+      { kind: 'new', text: 'Dark mode. Switch with the sun/moon button, or let it follow your phone.' },
+      { kind: 'new', text: 'Add a transaction from any screen with the "Add transaction" button.' },
+      { kind: 'improved', text: 'Completely redesigned with a cleaner, calmer look and easier-to-read colors.' },
+      { kind: 'improved', text: 'Income is green and expenses are red everywhere, so amounts read at a glance.' },
+      { kind: 'improved', text: 'The app loads faster — screens now load only when you open them.' },
+      { kind: 'fixed', text: 'Category icons show correctly again (they were all showing a tag).' },
+      { kind: 'fixed', text: 'Statistics, calendar and budgets refresh right after you add or edit a transaction.' },
+      { kind: 'fixed', text: 'Amounts no longer split "Rs." onto a separate line.' },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-09-26',
     title: 'Safer accounts & smarter search',

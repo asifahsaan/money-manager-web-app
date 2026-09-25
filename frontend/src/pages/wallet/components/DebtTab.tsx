@@ -215,7 +215,7 @@ export function DebtTab() {
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', color: '#78350f', boxShadow: '0 8px 20px rgba(217,119,6,0.2)' }}
+          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
         >
           <Plus size={15} /> Add Debt
         </button>
@@ -286,7 +286,7 @@ export function DebtTab() {
               </div>
               <button type="submit" disabled={createMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Debt'}
               </button>
             </form>
@@ -346,7 +346,7 @@ export function DebtTab() {
               </div>
               <button type="submit" disabled={editMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {editMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </form>
@@ -424,7 +424,7 @@ export function DebtTab() {
               </div>
               <button type="submit" disabled={payMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {payMutation.isPending ? 'Processing…' : 'Confirm'}
               </button>
             </form>
@@ -463,7 +463,7 @@ export function DebtTab() {
               </div>
               <button type="submit" disabled={entryEditMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {entryEditMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </form>
@@ -644,7 +644,7 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
               <button
                 onClick={onPay}
                 className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', boxShadow: '0 4px 12px rgba(217,119,6,0.2)' }}
+                style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 4px 12px rgba(79,70,229,0.2)' }}
               >
                 {isPayable ? 'Pay' : 'Collect'}
               </button>

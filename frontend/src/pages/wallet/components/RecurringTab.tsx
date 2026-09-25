@@ -137,7 +137,7 @@ export function RecurringTab() {
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', color: '#78350f', boxShadow: '0 8px 20px rgba(217,119,6,0.2)' }}
+          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
         >
           <Plus size={15} /> Add Recurring
         </button>
@@ -240,7 +240,7 @@ export function RecurringTab() {
               </div>
               <button type="submit" disabled={createMutation.isPending}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)' }}>
+                style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Recurring'}
               </button>
             </form>
@@ -302,7 +302,7 @@ export function RecurringTab() {
                       'flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all',
                       confirmExecute === r.id ? 'bg-green-500 text-white' : 'text-amber-900',
                     )}
-                    style={confirmExecute !== r.id ? { background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', boxShadow: '0 6px 16px rgba(217,119,6,0.2)' } : {}}
+                    style={confirmExecute !== r.id ? { background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' } : {}}
                   >
                     <Play size={11} />
                     {confirmExecute === r.id ? 'Confirm?' : 'Execute Now'}
