@@ -1,7 +1,7 @@
 {
   "name": "money-manager-backend",
   "version": "1.0.0",
-  "description": "Money Manager API — NestJS + Prisma + MySQL",
+  "description": "Money Manager API — NestJS + Prisma + PostgreSQL (with local MySQL mirror)",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -14,7 +14,9 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "backup": "ts-node -r tsconfig-paths/register scripts/backup-database.ts",
-    "restore": "ts-node -r tsconfig-paths/register scripts/restore-database.ts"
+    "restore": "ts-node -r tsconfig-paths/register scripts/restore-database.ts",
+    "mirror:setup": "ts-node scripts/mirror/build-mirror-schema.ts && prisma generate --schema prisma/mirror/schema.prisma && prisma db push --schema prisma/mirror/schema.prisma --skip-generate",
+    "mirror:sync": "ts-node -r tsconfig-paths/register scripts/mirror/sync-to-mysql.ts"
   },
   "dependencies": {
     "@nestjs/cli": "^10.3.0",

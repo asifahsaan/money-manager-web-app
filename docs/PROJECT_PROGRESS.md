@@ -1,8 +1,16 @@
 # Money Manager — Project Progress
 
 ## Current Phase
-**Phase 4 — Wallet Sub-features — ✅ COMPLETE**
+**Phase 4 — Wallet Sub-features — ✅ COMPLETE** (plus post-Phase-4 work below)
 **Awaiting approval to start Phase 5**
+
+## Live Deployment (Sep 2026)
+| Part | Where |
+|---|---|
+| Frontend | Vercel — money-manager-web-app.vercel.app |
+| Backend | Render free tier — `render.yaml` |
+| Database | Neon PostgreSQL |
+| Local mirror | MySQL 8 on the dev PC, synced daily |
 
 ---
 
@@ -16,7 +24,7 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 ### Completed Tasks
 - [x] Backend NestJS project setup
 - [x] Frontend React + Vite project setup
-- [x] MySQL via docker-compose.yml
+- [x] MySQL via docker-compose.yml (later replaced by PostgreSQL — see below)
 - [x] Prisma schema (13 models, 9 enums, named relations for multi-FK wallets)
 - [x] Auth endpoints: POST /auth/register, POST /auth/login, GET /auth/me
 - [x] JWT auth guard (JwtAuthGuard, JwtStrategy, passport-jwt)
@@ -96,6 +104,28 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 
 ---
 
+## Post-Phase-4 Work — ✅ COMPLETE
+
+- [x] Admin panel with role-based access (USER / ADMIN / SUPERADMIN) and BI reports
+- [x] Change email with password confirmation
+- [x] Show/hide balance toggles (persisted to localStorage)
+- [x] Debt improvements: entry editing, wallet labels, auto Loan/Debt category, full reversal on delete
+- [x] Opening Balance transactions hidden from list and excluded from statistics
+- [x] Statistics redesign: Expense/Income structure cards, donut click filtering
+- [x] Public landing page at `/`
+- [x] Capacitor Android wrapper (APK build), native-friendly UX (safe-area, back button, status bar)
+- [x] **Aug 2026:** Railway trial expired (data lost) → moved to **Render (backend) + Neon (PostgreSQL)**
+  - Prisma provider switched MySQL → PostgreSQL, fresh `20260824201624_init` migration
+- [x] JSON backup/restore scripts (`npm run backup`, `npm run restore <file>`)
+- [x] **Sep 2026:** Local MySQL mirror of production
+  - `npm run mirror:setup` builds `prisma/mirror/schema.prisma` (MySQL) from the main schema and pushes it
+  - `npm run mirror:sync` copies every table Neon → local MySQL in one transaction, saves a daily JSON snapshot (keeps 30), logs to `backups/mirror-sync.log`
+  - Shrink guard: aborts if production has < 50% of the mirror's rows (protects against a wiped host)
+  - `scripts/mirror/register-daily-task.ps1` registers a daily Windows Scheduled Task
+- [x] Stopped committing `backend/dist` (Render builds it); docs updated for PostgreSQL
+
+---
+
 ## Bug Fixes Applied
 
 | Bug | Root Cause | Fix |
@@ -109,30 +139,31 @@ Architecture, screen map, DB schema, API plan, component plan, roadmap, assumpti
 ## How to Run
 
 ### Prerequisites
-- Docker Desktop running
 - Node.js 18+
+- PostgreSQL: a Neon branch, or `docker compose up -d postgres`
+- (Optional) MySQL 8 for the local mirror
 
-### Step 1: Start MySQL
-```bash
-# From D:\_expenseTracker\
-cp .env.example .env        # edit passwords as needed
-docker-compose up -d
-```
-
-### Step 2: Backend
+### Backend
 ```bash
 cd backend
-cp .env.example .env        # fill JWT_SECRET, DB_* credentials
+cp .env.example .env        # DATABASE_URL (Postgres), JWT_SECRET, optional MIRROR_DATABASE_URL
 npm install
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 npm run start:dev            # http://localhost:3001
 ```
 
-### Step 3: Frontend
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev                  # http://localhost:5173
+```
+
+### Local MySQL mirror
+```bash
+cd backend
+npm run mirror:setup         # once, and after every schema migration
+npm run mirror:sync          # manual run; the scheduled task runs it daily
 ```
 
 ---

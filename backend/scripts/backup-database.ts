@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { TABLES, delegates } from './lib/tables';
 
 const prisma = new PrismaClient();
 
@@ -10,22 +11,11 @@ async function main() {
 
   console.log('Exporting all tables...');
 
-  const data = {
-    exportedAt: new Date().toISOString(),
-    users: await prisma.user.findMany(),
-    accounts: await prisma.account.findMany(),
-    wallets: await prisma.wallet.findMany(),
-    categories: await prisma.category.findMany(),
-    transactions: await prisma.transaction.findMany(),
-    transactionAttachments: await prisma.transactionAttachment.findMany(),
-    budgets: await prisma.budget.findMany(),
-    goals: await prisma.goal.findMany(),
-    goalEntries: await prisma.goalEntry.findMany(),
-    debts: await prisma.debt.findMany(),
-    debtEntries: await prisma.debtEntry.findMany(),
-    recurrings: await prisma.recurring.findMany(),
-    settings: await prisma.setting.findMany(),
-  };
+  const data: Record<string, unknown> = { exportedAt: new Date().toISOString() };
+  const db = delegates(prisma);
+  for (const { key, model } of TABLES) {
+    data[key] = await db[model].findMany({ orderBy: { id: 'asc' } });
+  }
 
   const counts = Object.fromEntries(
     Object.entries(data)

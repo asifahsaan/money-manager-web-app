@@ -46,14 +46,15 @@ Backend:
 * JWT authentication
 * bcrypt password hashing
 * Prisma ORM
-* MySQL database
+* PostgreSQL database
 
 Database:
 
-* MySQL
+* PostgreSQL (production on Neon; was MySQL until Aug 2026)
 * Prisma migrations
 * Decimal fields for money values
 * Proper indexes and foreign keys
+* Local MySQL mirror of production, synced daily (`npm run mirror:sync`) — backup copy only, the app never reads from it
 
 ## Important Working Rules
 
@@ -120,7 +121,23 @@ Database:
 
 10. Recurring transactions should store templates and next occurrence dates. Do not auto-create unlimited future transactions.
 
-## Current Priority
+## Current State (Sep 2026)
+
+Phases 0–4 are complete and the app is live:
+
+* Frontend: Vercel (`frontend/.env.production` → Render API)
+* Backend: Render free tier (`render.yaml`, runs `prisma migrate deploy` on build)
+* Database: Neon PostgreSQL
+* Android: Capacitor wrapper in `frontend/android`
+* Backups: `npm run backup` (JSON) and the daily local MySQL mirror (`npm run mirror:sync`, see README)
+
+Rules for schema changes:
+
+* Add a Prisma migration (`npx prisma migrate dev`) — Render applies it on deploy.
+* Money fields stay `Decimal(18,2)`.
+* Keep the schema MySQL-compatible (no Postgres-only types such as arrays or `Json` path queries) so the mirror keeps working; re-run `npm run mirror:setup` after migrations.
+
+## Original Planning Priority (historical)
 
 Begin with planning only.
 

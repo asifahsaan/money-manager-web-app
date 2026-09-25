@@ -46,10 +46,11 @@ The app should feel like a polished SaaS finance dashboard, not a rough admin pa
 
 ### Database
 
-* MySQL
+* PostgreSQL (switched from MySQL in Aug 2026; hosted on Neon)
 * Prisma migrations
 * Decimal fields for all money values
 * Proper indexes, relations, and foreign keys
+* Local MySQL mirror of production for daily backups
 
 ---
 
@@ -990,7 +991,7 @@ Build:
 
 * Backend project setup
 * Frontend project setup
-* MySQL connection
+* Database connection (PostgreSQL)
 * Prisma setup
 * Authentication
 * Account model
