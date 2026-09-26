@@ -6,6 +6,7 @@ import {
   UserPlus, FolderPlus, LineChart, CheckCircle2, Github, Heart,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 // Fixed hex (not theme tokens) so the brand gradient looks the same in light and dark mode.
 const GRADIENT = 'linear-gradient(135deg, #6366f1, #7c3aed)';
@@ -90,6 +91,7 @@ export function LandingPage() {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
+            <ThemeToggle />
             <Link to="/login" className="rounded-lg px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-gray-100">
               Login
             </Link>
@@ -99,9 +101,12 @@ export function LandingPage() {
             </Link>
           </div>
 
-          <button className="rounded-lg p-2 text-ink hover:bg-gray-100 md:hidden" aria-label="Menu" onClick={() => setMobileOpen((v) => !v)}>
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <button className="rounded-lg p-2 text-ink hover:bg-gray-100" aria-label="Menu" onClick={() => setMobileOpen((v) => !v)}>
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {mobileOpen && (

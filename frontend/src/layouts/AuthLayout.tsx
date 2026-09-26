@@ -1,5 +1,7 @@
 import { Outlet, Navigate, Link } from 'react-router-dom';
-import { CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { useAuthStore } from '@/stores/auth.store';
 import { BrandMark } from '@/components/shared/BrandMark';
 
@@ -8,6 +10,8 @@ const POINTS = [
   'Budgets that warn you before you overspend',
   'Savings goals, udhaar tracking and recurring bills',
 ];
+
+const isNative = Capacitor.isNativePlatform();
 
 export function AuthLayout() {
   const token = useAuthStore((s) => s.token);
@@ -57,14 +61,27 @@ export function AuthLayout() {
 
       {/* Form */}
       <main
-        className="flex flex-1 items-center justify-center p-5"
+        className="relative flex flex-1 items-center justify-center p-5"
         style={{
           paddingTop: 'max(1.25rem, env(safe-area-inset-top))',
           paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
         }}
       >
+        {/* Way back to the public site — the Android app has none */}
+        {!isNative && (
+          <Link
+            to="/"
+            className="absolute left-5 top-5 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-gray-100 hover:text-ink"
+            style={{ top: 'max(1.25rem, env(safe-area-inset-top))' }}
+          >
+            <ArrowLeft size={16} /> Back to home
+          </Link>
+        )}
+        <div className="absolute right-5 top-5" style={{ top: 'max(1.25rem, env(safe-area-inset-top))' }}>
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+          <div className="mb-8 mt-10 flex items-center gap-2.5 lg:mt-0 lg:hidden">
             <BrandMark size={36} />
             <span className="text-lg font-semibold tracking-tight text-ink">Money Manager</span>
           </div>
