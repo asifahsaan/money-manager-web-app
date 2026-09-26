@@ -46,7 +46,9 @@ const FAQS = [
 
 const EYEBROW = 'mb-2 text-xs font-semibold uppercase tracking-widest text-primary-600';
 const H2 = 'text-3xl font-bold tracking-tight text-ink sm:text-4xl';
-const CARD = 'rounded-2xl border border-line bg-surface shadow-sm';
+const CARD = 'rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_rgba(15,23,42,0.06)]';
+// Tinted band that separates sections: lavender in light mode, deep indigo in dark
+const BAND = 'border-y border-line bg-primary-50/60';
 
 export function LandingPage() {
   const user = useAuthStore((s) => s.user);
@@ -121,9 +123,9 @@ export function LandingPage() {
       </header>
 
       {/* ── Hero ── */}
-      <section id="top" className="relative overflow-hidden">
+      <section id="top" className="relative overflow-hidden bg-gradient-to-b from-primary-50 to-canvas">
         <div
-          className="pointer-events-none absolute inset-x-0 -top-48 h-[520px] opacity-25 blur-3xl"
+          className="pointer-events-none absolute inset-x-0 -top-48 h-[520px] opacity-40 blur-3xl dark:opacity-25"
           style={{ background: 'radial-gradient(ellipse at center, #6366f1 0%, transparent 60%)' }}
         />
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 text-center sm:px-6">
@@ -160,7 +162,7 @@ export function LandingPage() {
               ['100%', 'Free forever'],
               ['24/7', 'Access anywhere'],
             ].map(([num, label]) => (
-              <div key={label} className={`${CARD} p-4`}>
+              <div key={label} className={`${CARD} bg-surface/90 p-4`}>
                 <p className="bg-clip-text text-2xl font-extrabold text-transparent" style={{ backgroundImage: GRADIENT }}>{num}</p>
                 <p className="mt-0.5 text-xs font-medium text-ink-muted">{label}</p>
               </div>
@@ -170,7 +172,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="scroll-mt-20 border-y border-line bg-surface py-20">
+      <section id="features" className={`scroll-mt-20 py-20 ${BAND}`}>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mb-12 text-center">
             <p className={EYEBROW}>Features</p>
@@ -181,7 +183,7 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-2xl border border-line bg-canvas p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
+              <div key={f.title} className={`${CARD} p-5 transition-all hover:-translate-y-1 hover:shadow-lg`}>
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl shadow-md" style={{ background: GRADIENT }}>
                   <f.icon size={19} color="white" />
                 </div>
@@ -203,7 +205,7 @@ export function LandingPage() {
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
               <div key={s.step} className={`relative ${CARD} p-6 text-center`}>
-                <span className="absolute right-5 top-4 select-none text-4xl font-extrabold text-primary-100">{s.step}</span>
+                <span className="absolute right-5 top-4 select-none text-4xl font-extrabold text-primary-200">{s.step}</span>
                 <div className="relative mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl shadow-md" style={{ background: GRADIENT }}>
                   <s.icon size={20} color="white" />
                 </div>
@@ -216,7 +218,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Why choose us ── */}
-      <section id="why-us" className="scroll-mt-20 border-y border-line bg-surface py-20">
+      <section id="why-us" className={`scroll-mt-20 py-20 ${BAND}`}>
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
           <div>
             <p className={EYEBROW}>Why choose us</p>
@@ -235,7 +237,7 @@ export function LandingPage() {
           </div>
           <div className="space-y-3">
             {WHY_US.map((point) => (
-              <div key={point} className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-3">
+              <div key={point} className={`flex items-center gap-3 px-4 py-3 ${CARD} rounded-xl`}>
                 <CheckCircle2 size={18} className="flex-shrink-0 text-primary-600" />
                 <p className="text-sm font-medium text-ink">{point}</p>
               </div>
