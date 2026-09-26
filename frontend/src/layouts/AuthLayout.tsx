@@ -19,7 +19,9 @@ export function AuthLayout() {
   return (
     <div className="flex min-h-screen bg-canvas">
       {/* Brand panel — desktop */}
-      <aside className="relative hidden w-[44%] max-w-xl flex-col justify-between overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-violet-800 p-10 text-white lg:flex">
+      <aside className="relative hidden w-[44%] max-w-xl flex-col justify-between overflow-hidden p-10 text-white lg:flex"
+        // Fixed colors: palette shades 700+ flip to light tints in dark mode
+        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 50%, #5b21b6 100%)' }}>
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
@@ -41,7 +43,7 @@ export function AuthLayout() {
           <ul className="mt-8 space-y-3.5">
             {POINTS.map((p) => (
               <li key={p} className="flex items-start gap-3 text-[15px] text-white/85">
-                <CheckCircle2 size={20} className="mt-0.5 flex-shrink-0 text-emerald-300" />
+                <CheckCircle2 size={20} className="mt-0.5 flex-shrink-0" color="#6ee7b7" />
                 {p}
               </li>
             ))}

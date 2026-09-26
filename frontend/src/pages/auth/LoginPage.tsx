@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { apiErrorMessage } from '@/lib/api-error';
 import { Mail, Lock } from 'lucide-react';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
@@ -36,10 +37,7 @@ export function LoginPage() {
         navigate('/overview', { replace: true });
       }
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Login failed. Please try again.';
-      toast.error(message);
+      toast.error(apiErrorMessage(err, 'Login failed. Please try again.'));
     }
   };
 
