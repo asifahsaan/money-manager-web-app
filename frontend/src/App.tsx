@@ -21,6 +21,7 @@ const WalletDetailPage = page(() => import('@/pages/wallet/WalletDetailPage'), '
 const CalendarPage = page(() => import('@/pages/calendar/CalendarPage'), 'CalendarPage');
 const StatisticsPage = page(() => import('@/pages/statistics/StatisticsPage'), 'StatisticsPage');
 const StatementsPage = page(() => import('@/pages/statements/StatementsPage'), 'StatementsPage');
+const TaxReportPage = page(() => import('@/pages/tax/TaxReportPage'), 'TaxReportPage');
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage');
 const AdminPage = page(() => import('@/pages/admin/AdminPage'), 'AdminPage');
 const LandingPage = page(() => import('@/pages/landing/LandingPage'), 'LandingPage');
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
       { path: '/wallet/:id', element: withSuspense(<WalletDetailPage />) },
       { path: '/settings', element: withSuspense(<SettingsPage />) },
       { path: '/statements', element: withSuspense(<StatementsPage />) },
+      { path: '/tax-report', element: withSuspense(<TaxReportPage />) },
     ],
   },
   { path: '/admin', element: withSuspense(<AdminPage />) },

@@ -16,6 +16,7 @@ import { DebtsModule } from './debts/debts.module';
 import { RecurringsModule } from './recurrings/recurrings.module';
 import { AdminModule } from './admin/admin.module';
 import { StatementsModule } from './statements/statements.module';
+import { TaxReportModule } from './tax-report/tax-report.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { StatementsModule } from './statements/statements.module';
     RecurringsModule,
     AdminModule,
     StatementsModule,
+    TaxReportModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

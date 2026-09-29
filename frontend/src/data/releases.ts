@@ -15,6 +15,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.10.0',
+    date: '2026-09-30',
+    title: 'Tax Year Report & audit',
+    changes: [
+      { kind: 'new', text: 'Tax Report — one click builds your income by head, personal expenses and wealth reconciliation for a Pakistan tax year (Jul–Jun) or a calendar year.' },
+      { kind: 'new', text: 'Data audit finds uncategorised entries, possible duplicates, wallet mismatches, negative balances, large expenses without receipts and old loans — tap any item to fix it.' },
+      { kind: 'new', text: 'Each head shows the related Income Tax Ordinance, 2001 section (e.g. s.12 salary, s.116 wealth statement) for reference.' },
+      { kind: 'new', text: 'Download the full report as PDF (for your tax consultant) or CSV.' },
+      { kind: 'new', text: 'Choose which head each category belongs to; your choice is saved.' },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-09-30',
     title: 'Debt reminders',

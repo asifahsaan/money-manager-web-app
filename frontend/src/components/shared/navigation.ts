@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   PieChart,
   FileText,
+  Scale,
   Wallet,
   Settings,
   Shield,
@@ -27,6 +28,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/statistics', label: 'Statistics', shortLabel: 'Stats', icon: PieChart },
   { to: '/wallet', label: 'Wallets & Plans', shortLabel: 'Wallets', icon: Wallet },
   { to: '/statements', label: 'Statements', shortLabel: 'Statements', icon: FileText, mobile: false },
+  { to: '/tax-report', label: 'Tax Report', shortLabel: 'Tax', icon: Scale, mobile: false },
 ];
 
 export const SETTINGS_NAV: NavItem = { to: '/settings', label: 'Settings', shortLabel: 'Settings', icon: Settings };
@@ -41,6 +43,7 @@ const TITLES: [string, string][] = [
   ['/wallet', 'Wallets & Plans'],
   ['/settings', 'Settings'],
   ['/statements', 'Statements'],
+  ['/tax-report', 'Tax Report'],
 ];
 
 export function pageTitle(pathname: string): string {

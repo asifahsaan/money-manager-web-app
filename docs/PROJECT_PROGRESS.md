@@ -182,6 +182,24 @@ Found in a full code review; verified end-to-end against an isolated Postgres (1
   editable Roman Urdu / English templates; offered right after creating a debt with a contact
 - [ ] Phase 2 (not built): automatic emails via Resend + daily cron (GitHub Actions / cron-job.org)
 
+## Tax Year Report & Audit — v1.10.0 (Sep 2026) — ✅ COMPLETE
+
+- [x] `GET /api/tax-report?accountId&period=tax|calendar&year` — tax year = 1 Jul (N-1) – 30 Jun N
+- [x] Income grouped under ITO 2001 heads (salary, property, business, capital gains, other sources);
+  personal expenses under wealth-statement heads; loan, goal, transfer and opening-balance movements
+  excluded as capital
+- [x] Wealth reconciliation: opening net assets (wallets rebuilt from transactions + goals +
+  receivables − payables) + income − expenses ± known adjustments = closing; residual must be 0
+- [x] Audit checks: wallet mismatch, unreconciled wealth, uncategorised, duplicates, future-dated,
+  negative wallets, non-cash loans, opening balances in period, large expenses without receipt,
+  loans open > 1 year
+- [x] Category → head mapping with keyword defaults + per-account overrides (`settings` table,
+  `GET/PUT /api/tax-report/mapping`)
+- [x] Page + PDF + CSV with ITO 2001 section references (`frontend/src/lib/fbr-references.ts`,
+  last reviewed 30 Sep 2026) and a clear "not tax advice / not an FBR certification" disclaimer
+- [x] Verified: 22 API checks — residual 0.00 for tax and calendar periods, closing wallets = live
+  balances, loans/goals excluded from income, remap keeps reconciliation
+
 ### Still open from the review
 - Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
 - No automated tests; no wallet-balance reconciliation job

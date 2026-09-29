@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { addMonths, endOfMonth, format, parseISO, startOfMonth, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
-import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Loader2, Scale } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAccountStore } from '@/stores/account.store';
 import { walletService } from '@/services/wallet.service';
 import { statementService } from '@/services/statement.service';
@@ -131,7 +132,13 @@ export function StatementsPage() {
             </select>
           </label>
 
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Link
+              to="/tax-report"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-semibold text-ink transition-colors hover:bg-gray-50"
+            >
+              <Scale size={16} /> Tax report
+            </Link>
             <button
               onClick={() => statement && downloadStatementCsv(statement)}
               disabled={!statement}
