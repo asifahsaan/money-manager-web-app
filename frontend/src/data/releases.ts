@@ -17,11 +17,16 @@ export const RELEASES: Release[] = [
   {
     version: '1.8.0',
     date: '2026-09-29',
-    title: 'Bank-style statements',
+    title: 'Statements & faster entry',
     changes: [
       { kind: 'new', text: 'Statements — a monthly (or custom-dates) ledger with opening balance, every debit and credit, running balance and closing balance.' },
       { kind: 'new', text: 'Download your statement as a PDF or a CSV (opens in Excel).' },
       { kind: 'new', text: 'Pick one wallet or all wallets together. Open it from the sidebar or the statement button on Transactions.' },
+      { kind: 'improved', text: 'A compact add-transaction form that fits on one screen — Save is always visible.' },
+      { kind: 'new', text: 'One-tap category chips showing the categories you use most; everything else under "More".' },
+      { kind: 'new', text: '"Save & add another" for entering several expenses in a row.' },
+      { kind: 'improved', text: 'Remembers the wallet you used last; swap From/To in one tap on transfers.' },
+      { kind: 'fixed', text: 'Editing a transaction now shows its category instead of an empty picker.' },
     ],
   },
   {
