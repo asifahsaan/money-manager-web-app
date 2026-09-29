@@ -15,6 +15,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.8.0',
+    date: '2026-09-29',
+    title: 'Bank-style statements',
+    changes: [
+      { kind: 'new', text: 'Statements — a monthly (or custom-dates) ledger with opening balance, every debit and credit, running balance and closing balance.' },
+      { kind: 'new', text: 'Download your statement as a PDF or a CSV (opens in Excel).' },
+      { kind: 'new', text: 'Pick one wallet or all wallets together. Open it from the sidebar or the statement button on Transactions.' },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-09-26',
     title: 'A fresh new look',

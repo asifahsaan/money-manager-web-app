@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Download, X, Wallet, Eye, EyeOff, Banknote, Landmark, CreditCard, Smartphone, Briefcase, TrendingUp, TrendingDown, PiggyBank, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Download, FileText, X, Wallet, Eye, EyeOff, Banknote, Landmark, CreditCard, Smartphone, Briefcase, TrendingUp, TrendingDown, PiggyBank, type LucideIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -269,7 +269,16 @@ export function TransactionsPage() {
             )}
           </button>
           <button
+            onClick={() => navigate(`/statements?month=${format(month, 'yyyy-MM')}`)}
+            title="Monthly statement (PDF / CSV)"
+            aria-label="Monthly statement"
+            className="w-9 h-9 border bg-white border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:border-gray-300 shadow-sm transition-colors"
+          >
+            <FileText size={16} />
+          </button>
+          <button
             onClick={handleExport}
+            title="Export transactions (CSV)"
             disabled={exporting}
             className="w-9 h-9 border bg-white border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:border-gray-300 shadow-sm transition-colors disabled:opacity-50"
           >

@@ -17,6 +17,7 @@ A full-stack personal finance management application with expense tracking, budg
 - **Wallet Management** — Multiple wallets (bank, cash, etc.) with balance tracking
 - **Calendar View** — Browse transactions by date
 - **CSV Export** — Export transactions to CSV
+- **Statements** — Bank-style monthly ledger (debit / credit / running balance) as PDF or CSV
 - **Multi-currency** — Configurable currency per account
 - **Admin Panel** — Role-based (Admin / Superadmin) user management and BI reports
 - **Landing Page** — Public marketing page at the root route

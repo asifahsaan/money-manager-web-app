@@ -10,7 +10,7 @@ export function BottomNav() {
       aria-label="Main"
     >
       <div className="flex h-16 items-stretch px-1">
-        {PRIMARY_NAV.map(({ to, icon: Icon, shortLabel }) => (
+        {PRIMARY_NAV.filter((n) => n.mobile !== false).map(({ to, icon: Icon, shortLabel }) => (
           <NavLink
             key={to}
             to={to}

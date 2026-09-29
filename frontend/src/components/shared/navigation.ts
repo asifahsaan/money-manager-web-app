@@ -3,6 +3,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   PieChart,
+  FileText,
   Wallet,
   Settings,
   Shield,
@@ -14,6 +15,8 @@ export interface NavItem {
   label: string;
   shortLabel: string;
   icon: LucideIcon;
+  /** false = desktop sidebar only (the mobile tab bar holds 5 items) */
+  mobile?: boolean;
 }
 
 // Primary destinations — shared by the desktop sidebar and the mobile tab bar.
@@ -23,6 +26,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: CalendarDays },
   { to: '/statistics', label: 'Statistics', shortLabel: 'Stats', icon: PieChart },
   { to: '/wallet', label: 'Wallets & Plans', shortLabel: 'Wallets', icon: Wallet },
+  { to: '/statements', label: 'Statements', shortLabel: 'Statements', icon: FileText, mobile: false },
 ];
 
 export const SETTINGS_NAV: NavItem = { to: '/settings', label: 'Settings', shortLabel: 'Settings', icon: Settings };
@@ -36,6 +40,7 @@ const TITLES: [string, string][] = [
   ['/wallet/', 'Wallet details'],
   ['/wallet', 'Wallets & Plans'],
   ['/settings', 'Settings'],
+  ['/statements', 'Statements'],
 ];
 
 export function pageTitle(pathname: string): string {

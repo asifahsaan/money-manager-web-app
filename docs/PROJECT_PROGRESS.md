@@ -161,6 +161,17 @@ Found in a full code review; verified end-to-end against an isolated Postgres (1
 - [x] Fixed: all category icons rendered as "Tag"; stale stats/calendar/budgets after adding a
   transaction; "Rs." wrapping onto its own line; E-wallet icon never matched
 
+## Statements — v1.8.0 (Sep 2026) — ✅ COMPLETE
+
+- [x] `GET /api/statements?accountId&walletId?&startDate&endDate` — bank-style ledger rebuilt from
+  transactions: opening balance, debit/credit per row, running balance, totals, closing balance
+  (Decimal math). One wallet, or all wallets included in the total (internal transfers net out;
+  their fee is a debit).
+- [x] Statements page (monthly or custom range, wallet picker, preview) + PDF (jsPDF, lazy-loaded)
+  and CSV (UTF-8 BOM for Excel) downloads
+- [x] Verified: every wallet's all-time closing = its current balance; combined closing = net worth;
+  month opening = previous month closing
+
 ### Still open from the review
 - Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
 - No automated tests; no wallet-balance reconciliation job
