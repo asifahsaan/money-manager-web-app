@@ -13,6 +13,7 @@ import { Debt, DebtType } from '@/types';
 import { format } from 'date-fns';
 import { dueLabel, dueStatus } from '@/lib/debt-reminders';
 import { DebtReminderModal } from './DebtReminderModal';
+import { apiErrorMessage } from '@/lib/api-error';
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -132,7 +133,7 @@ export function DebtTab() {
       // Offer to tell the other person right away
       if (debt && (debt.contactPhone || debt.contactEmail)) setReminder({ debt, justCreated: true });
     },
-    onError: () => toast.error('Failed to create debt'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create debt')),
   });
 
   const editMutation = useMutation({
@@ -153,7 +154,7 @@ export function DebtTab() {
       qc.invalidateQueries({ queryKey: ['debts', accountId] });
       setEditingDebt(null);
     },
-    onError: () => toast.error('Failed to update debt'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update debt')),
   });
 
   const payMutation = useMutation({
