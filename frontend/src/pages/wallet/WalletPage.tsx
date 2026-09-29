@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -62,6 +62,9 @@ export function WalletPage() {
   const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>(
     (initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring') ?? 'wallets'
   );
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring');
+  }, [initialTab]);
   const [allStatsHidden, setAllStatsHidden] = useState(() => localStorage.getItem('mm_wp_stats_all') === 'true');
   const [hiddenStats, setHiddenStats] = useState<Set<string>>(() => {
     try { return new Set<string>(JSON.parse(localStorage.getItem('mm_wp_stats') ?? '[]')); } catch { return new Set(); }
@@ -624,7 +627,7 @@ export function WalletPage() {
               <button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="w-full py-3 rounded-xl font-semibold text-amber-900 disabled:opacity-60 transition-all active:scale-95"
+                className="w-full py-3 rounded-xl font-semibold text-white disabled:opacity-60 transition-all active:scale-95"
                 style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 10px 25px rgba(79,70,229,0.25)' }}
               >
                 {saveMutation.isPending ? 'Saving...' : editing ? 'Update Wallet' : 'Create Wallet'}

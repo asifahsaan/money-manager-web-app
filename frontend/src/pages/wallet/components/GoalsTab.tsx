@@ -181,7 +181,7 @@ export function GoalsTab() {
                 </div>
               </div>
               <button type="submit" disabled={createMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Goal'}
               </button>
@@ -229,7 +229,7 @@ export function GoalsTab() {
                 </div>
               </div>
               <button type="submit" disabled={entryMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {entryMutation.isPending ? 'Processing…' : `Confirm ${entryType}`}
               </button>
@@ -289,7 +289,7 @@ export function GoalsTab() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setSelectedGoal(g); setEntryType('deposit'); resetEntry(); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
                     style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' }}
                   >
                     <TrendingUp size={12} /> Deposit

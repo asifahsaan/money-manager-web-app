@@ -239,6 +239,9 @@ export interface Debt {
   color: string | null;
   status: DebtStatus;
   date: string;
+  dueDate: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
   entries?: DebtEntry[];
   createdAt: string;
   updatedAt: string;

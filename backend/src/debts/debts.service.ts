@@ -50,6 +50,9 @@ export class DebtsService {
           walletId: dto.walletId ?? null,
           color: dto.color ?? null,
           date: txDate,
+          dueDate: dto.dueDate ? new Date(dto.dueDate + 'T00:00:00.000Z') : null,
+          contactPhone: dto.contactPhone?.trim() || null,
+          contactEmail: dto.contactEmail?.trim() || null,
         },
       });
 
@@ -115,9 +118,13 @@ export class DebtsService {
         ...(dto.personName !== undefined && { personName: dto.personName }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.color !== undefined && { color: dto.color }),
-        ...(dto.date && { date: new Date(dto.date) }),
+        ...(dto.date && { date: new Date(dto.date + 'T00:00:00.000Z') }),
         ...(totalAmount !== undefined && { totalAmount, remainingAmount, status }),
         ...(dto.walletId !== undefined && { walletId: dto.walletId }),
+        // null clears a field; undefined leaves it unchanged
+        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate + 'T00:00:00.000Z') : null }),
+        ...(dto.contactPhone !== undefined && { contactPhone: dto.contactPhone?.trim() || null }),
+        ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail?.trim() || null }),
       },
     });
   }

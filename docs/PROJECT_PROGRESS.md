@@ -172,6 +172,16 @@ Found in a full code review; verified end-to-end against an isolated Postgres (1
 - [x] Verified: every wallet's all-time closing = its current balance; combined closing = net worth;
   month opening = previous month closing
 
+## Debt Reminders, Phase 1 — v1.9.0 (Sep 2026) — ✅ COMPLETE
+
+- [x] `debts.dueDate`, `contactPhone`, `contactEmail` (migration `20260930000000`); validated in DTOs,
+  `null` clears a field on update
+- [x] In-app reminders: due/overdue chips on debt cards, header bell with count + list,
+  "Debts due" card on Overview (overdue or due within 3 days)
+- [x] Click-to-send WhatsApp (`wa.me`, PK numbers normalised to 92…) and email (`mailto:`) with
+  editable Roman Urdu / English templates; offered right after creating a debt with a contact
+- [ ] Phase 2 (not built): automatic emails via Resend + daily cron (GitHub Actions / cron-job.org)
+
 ### Still open from the review
 - Attachments stored on Render's ephemeral disk and served without auth → move to cloud storage
 - No automated tests; no wallet-balance reconciliation job

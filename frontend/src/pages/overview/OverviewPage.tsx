@@ -7,7 +7,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Too
 import {
   BarChart3, LineChart as LineChartIcon,
   ArrowDownRight, ArrowUpRight, ChevronRight, Eye, EyeOff, PiggyBank, Plus, Target, TrendingDown, TrendingUp,
-  Wallet as WalletIcon, type LucideIcon,
+  Wallet as WalletIcon, CalendarClock, MessageCircle, type LucideIcon,
 } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -17,10 +17,13 @@ import { statisticsService, type CategoryBreakdownItem } from '@/services/statis
 import { transactionService } from '@/services/transaction.service';
 import { budgetService } from '@/services/budget.service';
 import { goalService } from '@/services/goal.service';
+import { debtService } from '@/services/debt.service';
+import { dueLabel, dueStatus, urgentDebts } from '@/lib/debt-reminders';
+import { DebtReminderModal } from '@/pages/wallet/components/DebtReminderModal';
 import { TransactionItem } from '@/pages/transactions/components/TransactionItem';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
 import { CategoryBreakdownModal } from './CategoryBreakdownModal';
-import type { Transaction } from '@/types';
+import type { Debt, Transaction } from '@/types';
 import { CategoryIcon } from '@/pages/transactions/components/CategoryIcon';
 import { CHART, chartChrome } from '@/lib/chart-colors';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -233,6 +236,14 @@ export function OverviewPage() {
     queryFn: () => budgetService.getAll(accountId!, monthStart, monthEnd),
     enabled,
   });
+  const { data: debts = [] } = useQuery({
+    queryKey: ['debts', accountId],
+    queryFn: () => debtService.getAll(accountId!),
+    enabled,
+  });
+  const dueDebts = urgentDebts(debts);
+  const [remindDebt, setRemindDebt] = useState<Debt | null>(null);
+
   const { data: goals } = useQuery({
     queryKey: ['goals', accountId],
     queryFn: () => goalService.getAll(accountId!),
@@ -344,6 +355,42 @@ export function OverviewPage() {
           />
         </div>
       </div>
+
+      {dueDebts.length > 0 && (
+        <section className="card" aria-label="Debts due">
+          <div className="flex items-center justify-between px-5 pb-2 pt-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <CalendarClock size={16} className="text-orange-500" /> Debts due
+            </h2>
+            <ViewAll to="/wallet?tab=debt" />
+          </div>
+          <ul className="divide-y divide-gray-100 px-5 pb-2">
+            {dueDebts.slice(0, 4).map((d) => {
+              const overdue = dueStatus(d).kind === 'overdue';
+              return (
+                <li key={d.id} className="flex items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {d.type === 'RECEIVABLE' ? 'Collect from ' : 'Pay back '}{d.personName}
+                    </p>
+                    <p className={cn('text-xs font-medium', overdue ? 'text-red-600' : 'text-orange-600')}>{dueLabel(d)}</p>
+                  </div>
+                  <span className={cn('text-sm font-semibold tabular-nums', d.type === 'RECEIVABLE' ? 'text-income' : 'text-expense')}>
+                    {money(Number(d.remainingAmount))}
+                  </span>
+                  <button
+                    onClick={() => setRemindDebt(d)}
+                    className="flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ background: '#25D366' }}
+                  >
+                    <MessageCircle size={13} /> Remind
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
         {/* Cash flow */}
@@ -566,6 +613,9 @@ export function OverviewPage() {
 
       {openTx && accountId && (
         <TransactionModal accountId={accountId} currency={currency} editing={openTx} onClose={() => setOpenTx(null)} />
+      )}
+      {remindDebt && (
+        <DebtReminderModal debt={remindDebt} currency={currency} onClose={() => setRemindDebt(null)} />
       )}
       {breakdown && (
         <CategoryBreakdownModal

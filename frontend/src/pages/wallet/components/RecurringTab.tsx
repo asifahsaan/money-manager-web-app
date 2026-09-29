@@ -239,7 +239,7 @@ export function RecurringTab() {
                 </div>
               </div>
               <button type="submit" disabled={createMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Recurring'}
               </button>
@@ -300,7 +300,7 @@ export function RecurringTab() {
                     onClick={() => confirmExecute === r.id ? executeMutation.mutate(r.id) : setConfirmExecute(r.id)}
                     className={cn(
                       'flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all',
-                      confirmExecute === r.id ? 'bg-green-500 text-white' : 'text-amber-900',
+                      confirmExecute === r.id ? 'bg-green-500 text-white' : 'text-white',
                     )}
                     style={confirmExecute !== r.id ? { background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' } : {}}
                   >

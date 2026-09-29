@@ -10,6 +10,7 @@ import { BottomNav } from '@/components/shared/BottomNav';
 import { AccountSelector } from '@/components/shared/AccountSelector';
 import { WhatsNewButton } from '@/components/shared/WhatsNew';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { DueDebtsBell } from '@/components/shared/DueDebtsBell';
 import { BrandMark } from '@/components/shared/BrandMark';
 import { pageTitle } from '@/components/shared/navigation';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
@@ -96,6 +97,7 @@ export function DashboardLayout() {
 
           <div className="flex flex-shrink-0 items-center gap-1">
             <WhatsNewButton />
+            <DueDebtsBell />
             <ThemeToggle />
             {activeAccountId && (
               <button

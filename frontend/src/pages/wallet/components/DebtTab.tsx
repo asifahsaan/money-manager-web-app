@@ -4,13 +4,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, X, User, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { Plus, X, User, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Debt, DebtType } from '@/types';
 import { format } from 'date-fns';
+import { dueLabel, dueStatus } from '@/lib/debt-reminders';
+import { DebtReminderModal } from './DebtReminderModal';
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -22,6 +24,9 @@ const createSchema = z.object({
   walletId: z.string().min(1, 'Please select a wallet.'),
   color: z.string().optional(),
   date: z.string().min(1),
+  dueDate: z.string().optional(),
+  contactPhone: z.string().optional().refine((v) => !v || /^\+?[\d\s-]{7,20}$/.test(v), 'Enter a valid phone number'),
+  contactEmail: z.string().optional().refine((v) => !v || /^\S+@\S+\.\S+$/.test(v), 'Enter a valid email'),
 });
 
 const editSchema = z.object({
@@ -31,6 +36,9 @@ const editSchema = z.object({
   walletId: z.string().optional(),
   color: z.string().optional(),
   date: z.string().min(1),
+  dueDate: z.string().optional(),
+  contactPhone: z.string().optional().refine((v) => !v || /^\+?[\d\s-]{7,20}$/.test(v), 'Enter a valid phone number'),
+  contactEmail: z.string().optional().refine((v) => !v || /^\S+@\S+\.\S+$/.test(v), 'Enter a valid email'),
 });
 
 const entryEditSchema = z.object({
@@ -64,6 +72,7 @@ export function DebtTab() {
   const [editingEntry, setEditingEntry] = useState<{ debtId: number; entry: NonNullable<Debt['entries']>[0] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [reminder, setReminder] = useState<{ debt: Debt; justCreated: boolean } | null>(null);
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ['debts', accountId],
@@ -109,14 +118,19 @@ export function DebtTab() {
         walletId: data.walletId ? Number(data.walletId) : undefined,
         color: data.color,
         date: data.date,
+        dueDate: data.dueDate || undefined,
+        contactPhone: data.contactPhone?.trim() || undefined,
+        contactEmail: data.contactEmail?.trim() || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (debt) => {
       toast.success('Debt created');
       qc.invalidateQueries({ queryKey: ['debts', accountId] });
       qc.invalidateQueries({ queryKey: ['wallets', accountId] });
       qc.invalidateQueries({ queryKey: ['transactions'] });
       setShowCreate(false);
       resetC();
+      // Offer to tell the other person right away
+      if (debt && (debt.contactPhone || debt.contactEmail)) setReminder({ debt, justCreated: true });
     },
     onError: () => toast.error('Failed to create debt'),
   });
@@ -130,6 +144,9 @@ export function DebtTab() {
         walletId: data.walletId ? Number(data.walletId) : null,
         color: data.color,
         date: data.date,
+        dueDate: data.dueDate || null,
+        contactPhone: data.contactPhone?.trim() || null,
+        contactEmail: data.contactEmail?.trim() || null,
       }),
     onSuccess: () => {
       toast.success('Debt updated');
@@ -190,6 +207,9 @@ export function DebtTab() {
       walletId: d.walletId ? String(d.walletId) : '',
       color: d.color ?? DEBT_COLORS[0],
       date: format(new Date(d.date), 'yyyy-MM-dd'),
+      dueDate: d.dueDate ? d.dueDate.slice(0, 10) : '',
+      contactPhone: d.contactPhone ?? '',
+      contactEmail: d.contactEmail ?? '',
     });
   }
 
@@ -274,6 +294,25 @@ export function DebtTab() {
                 </select>
                 {errC.walletId && <p className="text-expense text-xs mt-1">{errC.walletId.message}</p>}
               </div>
+              <div className="rounded-xl border border-dashed border-gray-200 p-3 space-y-2">
+                <p className="text-xs font-medium text-gray-500">Reminder details <span className="font-normal text-gray-400">(optional)</span></p>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">{watchC('type') === 'PAYABLE' ? 'Pay back by' : 'Get back by'}</label>
+                  <input type="date" {...regC('dueDate')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">WhatsApp / phone</label>
+                    <input type="tel" inputMode="tel" placeholder="0300-1234567" {...regC('contactPhone')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                    {errC.contactPhone && <p className="text-expense text-xs mt-1">{errC.contactPhone.message}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                    <input type="email" placeholder="name@email.com" {...regC('contactEmail')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                    {errC.contactEmail && <p className="text-expense text-xs mt-1">{errC.contactEmail.message}</p>}
+                  </div>
+                </div>
+              </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Color</label>
                 <div className="flex gap-2">
@@ -285,7 +324,7 @@ export function DebtTab() {
                 </div>
               </div>
               <button type="submit" disabled={createMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Create Debt'}
               </button>
@@ -334,6 +373,25 @@ export function DebtTab() {
                   {wallets.map((w) => <option key={w.id} value={w.id}>{w.name} ({formatCurrency(Number(w.currentBalance), currency)})</option>)}
                 </select>
               </div>
+              <div className="rounded-xl border border-dashed border-gray-200 p-3 space-y-2">
+                <p className="text-xs font-medium text-gray-500">Reminder details <span className="font-normal text-gray-400">(optional)</span></p>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">{editingDebt?.type === 'PAYABLE' ? 'Pay back by' : 'Get back by'}</label>
+                  <input type="date" {...regE('dueDate')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">WhatsApp / phone</label>
+                    <input type="tel" inputMode="tel" placeholder="0300-1234567" {...regE('contactPhone')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                    {errE.contactPhone && <p className="text-expense text-xs mt-1">{errE.contactPhone.message}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                    <input type="email" placeholder="name@email.com" {...regE('contactEmail')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                    {errE.contactEmail && <p className="text-expense text-xs mt-1">{errE.contactEmail.message}</p>}
+                  </div>
+                </div>
+              </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Color</label>
                 <div className="flex gap-2">
@@ -345,13 +403,22 @@ export function DebtTab() {
                 </div>
               </div>
               <button type="submit" disabled={editMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {editMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </form>
           </div>
         </div>
+      )}
+
+      {reminder && (
+        <DebtReminderModal
+          debt={reminder.debt}
+          currency={currency}
+          title={reminder.justCreated ? `Let ${reminder.debt.personName} know?` : undefined}
+          onClose={() => setReminder(null)}
+        />
       )}
 
       {/* ── Delete confirmation modal ── */}
@@ -423,7 +490,7 @@ export function DebtTab() {
                 </div>
               </div>
               <button type="submit" disabled={payMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {payMutation.isPending ? 'Processing…' : 'Confirm'}
               </button>
@@ -462,7 +529,7 @@ export function DebtTab() {
                 <input {...regEE('note')} placeholder="Optional note" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
               </div>
               <button type="submit" disabled={entryEditMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {entryEditMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
@@ -500,6 +567,7 @@ export function DebtTab() {
                     onEdit={() => openEdit(d)}
                     onDelete={() => setConfirmDelete(d.id)}
                     onEditEntry={(entry) => openEntryEdit(d.id, entry)}
+                    onRemind={() => setReminder({ debt: d, justCreated: false })}
                   />
                 ))}
               </div>
@@ -523,6 +591,7 @@ export function DebtTab() {
                     onEdit={() => openEdit(d)}
                     onDelete={() => setConfirmDelete(d.id)}
                     onEditEntry={(entry) => openEntryEdit(d.id, entry)}
+                    onRemind={() => setReminder({ debt: d, justCreated: false })}
                   />
                 ))}
               </div>
@@ -534,7 +603,7 @@ export function DebtTab() {
   );
 }
 
-function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onEditEntry }: {
+function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onEditEntry, onRemind }: {
   debt: Debt;
   currency: string;
   wallets: { id: number; name: string }[];
@@ -544,7 +613,10 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
   onEdit: () => void;
   onDelete: () => void;
   onEditEntry: (entry: NonNullable<Debt['entries']>[0]) => void;
+  onRemind: () => void;
 }) {
+  const due = dueStatus(d);
+  const dueText = dueLabel(d);
   const pct = Number(d.totalAmount) > 0 ? (Number(d.settledAmount) / Number(d.totalAmount)) * 100 : 0;
   const isPayable = d.type === 'PAYABLE';
   const barColor = isPayable ? '#EF4444' : '#3B82F6';
@@ -572,6 +644,15 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
             </span>
           </div>
           {d.description && <p className="text-[10px] text-gray-400 truncate">{d.description}</p>}
+          {dueText && (
+            <span className={cn(
+              'mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+              due.kind === 'overdue' ? 'bg-red-50 text-red-600' :
+              due.kind === 'today' || due.kind === 'soon' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500',
+            )}>
+              <CalendarClock size={10} /> {dueText}
+            </span>
+          )}
         </div>
         <div className="text-right flex-shrink-0 mr-1">
           <p className="text-sm font-black" style={{ color: barColor }}>
@@ -643,10 +724,19 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
             {d.status !== 'CLOSED' && (
               <button
                 onClick={onPay}
-                className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-amber-900 active:scale-95 transition-all"
+                className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 4px 12px rgba(79,70,229,0.2)' }}
               >
                 {isPayable ? 'Pay' : 'Collect'}
+              </button>
+            )}
+            {d.status !== 'CLOSED' && (
+              <button
+                onClick={onRemind}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: '#25D366' }}
+              >
+                <MessageCircle size={11} /> Remind
               </button>
             )}
             <button

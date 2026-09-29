@@ -149,7 +149,7 @@ export function BudgetTab() {
                 </div>
               </div>
               <button type="submit" disabled={createMutation.isPending}
-                className="w-full py-2.5 rounded-xl font-bold text-sm text-amber-900 disabled:opacity-60 active:scale-95 transition-all"
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
                 {createMutation.isPending ? 'Saving…' : 'Save Budget'}
               </button>

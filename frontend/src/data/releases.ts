@@ -15,6 +15,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.9.0',
+    date: '2026-09-30',
+    title: 'Debt reminders',
+    changes: [
+      { kind: 'new', text: 'Add a "pay back by" date, phone and email to any debt.' },
+      { kind: 'new', text: 'Send a ready-made reminder on WhatsApp or email in one tap — in Roman Urdu or English, and you can edit it first.' },
+      { kind: 'new', text: 'After adding a debt, send the person a note about it right away.' },
+      { kind: 'new', text: 'The bell in the header and a "Debts due" card on Overview show what is overdue or due soon.' },
+      { kind: 'fixed', text: 'Buttons in Budgets, Goals, Debts and Recurring are readable again (white text).' },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-09-29',
     title: 'Statements & faster entry',

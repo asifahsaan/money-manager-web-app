@@ -16,9 +16,12 @@ export const debtService = {
     walletId?: number;
     color?: string;
     date: string;
+    dueDate?: string;
+    contactPhone?: string;
+    contactEmail?: string;
   }) => apiClient.post<ApiResponse<Debt>>('/debts', data).then((r) => r.data.data),
 
-  update: (id: number, data: Partial<{ personName: string; description: string; color: string; date: string; totalAmount: number; walletId: number | null }>) =>
+  update: (id: number, data: Partial<{ personName: string; description: string; color: string; date: string; totalAmount: number; walletId: number | null; dueDate: string | null; contactPhone: string | null; contactEmail: string | null }>) =>
     apiClient.patch<ApiResponse<Debt>>(`/debts/${id}`, data).then((r) => r.data.data),
 
   pay: (id: number, data: { amount: number; walletId: number; date: string; note?: string }) =>
