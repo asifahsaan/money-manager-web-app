@@ -15,6 +15,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.10.1',
+    date: '2026-10-02',
+    title: 'Stay signed in',
+    changes: [
+      { kind: 'fixed', text: 'You are no longer logged out by surprise when the server is slow to respond — the app simply tries again.' },
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-09-30',
     title: 'Tax Year Report & audit',
