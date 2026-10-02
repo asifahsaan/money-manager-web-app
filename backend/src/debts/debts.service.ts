@@ -4,6 +4,7 @@ import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
 import { UpdateDebtEntryDto } from './dto/update-debt-entry.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
+import { DebtActivityKind, DebtActivityQueryDto } from './dto/debt-activity-query.dto';
 import { DebtStatus } from '@prisma/client';
 import { assertWalletsInAccount } from '../common/utils/ownership';
 
@@ -258,6 +259,87 @@ export class DebtsService {
       await tx.debtEntry.deleteMany({ where: { debtId: debt.id } });
       await tx.debt.delete({ where: { id: debt.id } });
     }, { timeout: 20000 });
+  }
+
+  /**
+   * Every money movement on the account's debts, newest first: the original
+   * lend/borrow (from the debt itself) plus each payment or collection entry.
+   * Built in memory — a personal account has a few hundred rows at most.
+   */
+  async activity(userId: number, q: DebtActivityQueryDto) {
+    await this.verifyOwnership(q.accountId, userId);
+    const debts = await this.prisma.debt.findMany({
+      where: { accountId: q.accountId, ...(q.debtId && { id: q.debtId }) },
+      include: { entries: true },
+    });
+
+    type Row = {
+      id: string;
+      kind: DebtActivityKind;
+      direction: 'IN' | 'OUT';
+      debtId: number;
+      personName: string;
+      amount: string;
+      walletId: number | null;
+      date: Date;
+      note: string | null;
+      entryId: number | null;
+    };
+    const rows: Row[] = [];
+    for (const d of debts) {
+      const receivable = d.type === 'RECEIVABLE';
+      rows.push({
+        id: `debt-${d.id}`,
+        kind: receivable ? 'LENT' : 'BORROWED',
+        direction: receivable ? 'OUT' : 'IN',
+        debtId: d.id,
+        personName: d.personName,
+        amount: d.totalAmount.toString(),
+        walletId: d.walletId,
+        date: d.date,
+        note: d.description,
+        entryId: null,
+      });
+      for (const e of d.entries) {
+        const collected = e.type === 'COLLECTION';
+        rows.push({
+          id: `entry-${e.id}`,
+          kind: collected ? 'COLLECTED' : 'REPAID',
+          direction: collected ? 'IN' : 'OUT',
+          debtId: d.id,
+          personName: d.personName,
+          amount: e.amount.toString(),
+          walletId: e.walletId,
+          date: e.date,
+          note: e.note,
+          entryId: e.id,
+        });
+      }
+    }
+
+    const start = q.startDate ? new Date(q.startDate.slice(0, 10) + 'T00:00:00.000Z') : null;
+    const end = q.endDate ? new Date(q.endDate.slice(0, 10) + 'T00:00:00.000Z') : null;
+    const filtered = rows
+      .filter((r) => (!q.kind || r.kind === q.kind) && (!start || r.date >= start) && (!end || r.date <= end))
+      .sort((a, b) => b.date.getTime() - a.date.getTime() || b.id.localeCompare(a.id));
+
+    let totalIn = 0;
+    let totalOut = 0;
+    for (const r of filtered) {
+      if (r.direction === 'IN') totalIn += Number(r.amount);
+      else totalOut += Number(r.amount);
+    }
+
+    const limit = q.limit ?? 20;
+    const page = q.page ?? 1;
+    return {
+      data: filtered.slice((page - 1) * limit, page * limit).map((r) => ({ ...r, date: r.date.toISOString().slice(0, 10) })),
+      total: filtered.length,
+      page,
+      limit,
+      totalIn: totalIn.toFixed(2),
+      totalOut: totalOut.toFixed(2),
+    };
   }
 
   private async findDebtCategory(accountId: number, name: string) {

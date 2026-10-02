@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, X, User, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
@@ -14,6 +14,13 @@ import { format } from 'date-fns';
 import { dueLabel, dueStatus } from '@/lib/debt-reminders';
 import { DebtReminderModal } from './DebtReminderModal';
 import { apiErrorMessage } from '@/lib/api-error';
+import { DebtActivityLog, Pager } from './DebtActivityLog';
+import type { DebtActivityRow } from '@/services/debt.service';
+
+const PAGE_SIZE = 10;
+type View = 'all' | 'RECEIVABLE' | 'PAYABLE' | 'closed';
+type Sort = 'due' | 'amount' | 'newest' | 'name';
+const SORT_LABEL: Record<Sort, string> = { due: 'Due date', amount: 'Amount left', newest: 'Newest', name: 'Name' };
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -74,6 +81,11 @@ export function DebtTab() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reminder, setReminder] = useState<{ debt: Debt; justCreated: boolean } | null>(null);
+  const [historyDebt, setHistoryDebt] = useState<Debt | null>(null);
+  const [view, setView] = useState<View>('all');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<Sort>('due');
+  const [page, setPage] = useState(1);
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ['debts', accountId],
@@ -214,6 +226,21 @@ export function DebtTab() {
     });
   }
 
+  function openEntryEditFromLog(r: DebtActivityRow) {
+    if (!r.entryId) return;
+    openEntryEdit(r.debtId, {
+      id: r.entryId,
+      debtId: r.debtId,
+      type: r.kind === 'COLLECTED' ? 'COLLECTION' : 'PAYMENT',
+      amount: r.amount,
+      walletId: r.walletId,
+      transactionId: null,
+      date: r.date,
+      note: r.note,
+      createdAt: r.date,
+    });
+  }
+
   function openEntryEdit(debtId: number, entry: NonNullable<Debt['entries']>[0]) {
     setEditingEntry({ debtId, entry });
     resetEE({
@@ -225,14 +252,12 @@ export function DebtTab() {
 
   if (!accountId) return null;
 
-  const payable = debts.filter((d) => d.type === 'PAYABLE');
-  const receivable = debts.filter((d) => d.type === 'RECEIVABLE');
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Debt Tracker</p>
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Debts & loans</p>
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
@@ -539,72 +564,254 @@ export function DebtTab() {
         </div>
       )}
 
+      {historyDebt && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setHistoryDebt(null)} />
+          <div className="relative bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <span className="font-bold text-sm text-gray-800">History — {historyDebt.personName}</span>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {formatCurrency(Number(historyDebt.settledAmount), currency)} of {formatCurrency(Number(historyDebt.totalAmount), currency)} settled
+                </p>
+              </div>
+              <button onClick={() => setHistoryDebt(null)} className="p-1 rounded-lg hover:bg-gray-100"><X size={15} className="text-gray-400" /></button>
+            </div>
+            <div className="p-5">
+              <DebtActivityLog
+                bare
+                accountId={accountId}
+                currency={currency}
+                wallets={wallets}
+                debts={debts}
+                debtId={historyDebt.id}
+                onEditEntry={openEntryEditFromLog}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+        <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-14 w-full" />)}</div>
       ) : debts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-sm text-gray-400">No debts tracked</p>
-          <button onClick={() => setShowCreate(true)} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
+        <div className="card flex flex-col items-center px-6 py-12 text-center">
+          <HandCoins size={36} className="text-gray-300" />
+          <p className="mt-3 text-sm font-semibold text-ink">Track money you lend or borrow</p>
+          <p className="mt-1 max-w-sm text-xs text-ink-muted">Add who owes you and whom you owe. Payments, reminders and the full history stay in one place.</p>
+          <button onClick={() => setShowCreate(true)} className="mt-4 text-sm text-amber-600 font-semibold hover:underline">
             Add your first debt
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="glass-card p-4">
-            <p className="text-sm font-bold text-expense mb-3 pb-2 border-b border-gray-100">Payable</p>
-            {payable.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No payable debts</p>
-            ) : (
-              <div className="space-y-2">
-                {payable.map((d) => (
-                  <DebtCard
-                    key={d.id}
-                    debt={d}
-                    currency={currency}
-                    wallets={wallets}
-                    expanded={expandedId === d.id}
-                    onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
-                    onPay={() => { setPayingDebt(d); resetP(); }}
-                    onEdit={() => openEdit(d)}
-                    onDelete={() => setConfirmDelete(d.id)}
-                    onEditEntry={(entry) => openEntryEdit(d.id, entry)}
-                    onRemind={() => setReminder({ debt: d, justCreated: false })}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="glass-card p-4">
-            <p className="text-sm font-bold text-income mb-3 pb-2 border-b border-gray-100">Receivable</p>
-            {receivable.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No receivable debts</p>
-            ) : (
-              <div className="space-y-2">
-                {receivable.map((d) => (
-                  <DebtCard
-                    key={d.id}
-                    debt={d}
-                    currency={currency}
-                    wallets={wallets}
-                    expanded={expandedId === d.id}
-                    onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
-                    onPay={() => { setPayingDebt(d); resetP(); }}
-                    onEdit={() => openEdit(d)}
-                    onDelete={() => setConfirmDelete(d.id)}
-                    onEditEntry={(entry) => openEntryEdit(d.id, entry)}
-                    onRemind={() => setReminder({ debt: d, justCreated: false })}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        <>
+          <DebtSummary debts={debts} currency={currency} onPick={(v) => { setView(v); setPage(1); }} />
+          <DebtList
+            debts={debts}
+            currency={currency}
+            wallets={wallets}
+            view={view}
+            search={search}
+            sort={sort}
+            page={page}
+            onView={(v) => { setView(v); setPage(1); }}
+            onSearch={(v) => { setSearch(v); setPage(1); }}
+            onSort={(v) => { setSort(v); setPage(1); }}
+            onPage={setPage}
+            expandedId={expandedId}
+            onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
+            onPay={(d) => { setPayingDebt(d); resetP(); }}
+            onEdit={openEdit}
+            onDelete={(d) => setConfirmDelete(d.id)}
+            onRemind={(d) => setReminder({ debt: d, justCreated: false })}
+            onHistory={setHistoryDebt}
+          />
+          <DebtActivityLog
+            accountId={accountId}
+            currency={currency}
+            wallets={wallets}
+            debts={debts}
+            onEditEntry={openEntryEditFromLog}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+const isOpen = (d: Debt) => d.status !== 'CLOSED';
+
+function DebtSummary({ debts, currency, onPick }: { debts: Debt[]; currency: string; onPick: (v: View) => void }) {
+  const open = debts.filter(isOpen);
+  const sum = (list: Debt[]) => list.reduce((s, d) => s + Number(d.remainingAmount), 0);
+  const receive = open.filter((d) => d.type === 'RECEIVABLE');
+  const pay = open.filter((d) => d.type === 'PAYABLE');
+  const net = sum(receive) - sum(pay);
+  const urgent = open.filter((d) => ['overdue', 'today', 'soon'].includes(dueStatus(d).kind));
+  const overdue = urgent.filter((d) => dueStatus(d).kind === 'overdue').length;
+  const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
+
+  const cards = [
+    { label: 'To receive', value: formatCurrency(sum(receive), currency), sub: receive.length ? people(receive.length) : 'No one owes you', tone: 'text-income', view: 'RECEIVABLE' as View },
+    { label: 'To pay', value: formatCurrency(sum(pay), currency), sub: pay.length ? people(pay.length) : 'You owe nothing', tone: 'text-expense', view: 'PAYABLE' as View },
+    { label: 'Net position', value: `${net >= 0 ? '+' : '−'} ${formatCurrency(Math.abs(net), currency)}`, sub: net > 0 ? 'In your favour' : net < 0 ? 'You owe more' : 'All square', tone: net >= 0 ? 'text-income' : 'text-expense', view: 'all' as View },
+    {
+      label: 'Due soon / overdue',
+      value: String(urgent.length),
+      sub: urgent.length ? (overdue ? `${overdue} overdue` : urgent.slice(0, 2).map((d) => d.personName).join(', ')) : 'Nothing due this week',
+      tone: overdue ? 'text-expense' : urgent.length ? 'text-orange-600' : 'text-ink',
+      view: 'all' as View,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {cards.map((c) => (
+        <button key={c.label} onClick={() => onPick(c.view)} className="stat-card text-left transition-colors hover:border-primary-200">
+          <p className="text-[11px] font-medium text-ink-muted">{c.label}</p>
+          <p className={cn('mt-0.5 text-lg font-black tabular-nums', c.tone)}>{c.value}</p>
+          <p className="mt-0.5 truncate text-[11px] text-ink-muted">{c.sub}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DebtList(props: {
+  debts: Debt[];
+  currency: string;
+  wallets: { id: number; name: string }[];
+  view: View;
+  search: string;
+  sort: Sort;
+  page: number;
+  onView: (v: View) => void;
+  onSearch: (v: string) => void;
+  onSort: (v: Sort) => void;
+  onPage: (p: number) => void;
+  expandedId: number | null;
+  onToggle: (id: number) => void;
+  onPay: (d: Debt) => void;
+  onEdit: (d: Debt) => void;
+  onDelete: (d: Debt) => void;
+  onRemind: (d: Debt) => void;
+  onHistory: (d: Debt) => void;
+}) {
+  const { debts, view, search, sort, page } = props;
+
+  const counts = useMemo(() => ({
+    all: debts.filter(isOpen).length,
+    RECEIVABLE: debts.filter((d) => isOpen(d) && d.type === 'RECEIVABLE').length,
+    PAYABLE: debts.filter((d) => isOpen(d) && d.type === 'PAYABLE').length,
+    closed: debts.filter((d) => !isOpen(d)).length,
+  }), [debts]);
+
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = debts.filter((d) => {
+      if (view === 'closed' ? isOpen(d) : !isOpen(d)) return false;
+      if ((view === 'RECEIVABLE' || view === 'PAYABLE') && d.type !== view) return false;
+      return !q || d.personName.toLowerCase().includes(q) || (d.description ?? '').toLowerCase().includes(q);
+    });
+    const byNewest = (a: Debt, b: Debt) => b.date.localeCompare(a.date) || b.id - a.id;
+    return list.sort((a, b) => {
+      if (sort === 'amount') return Number(b.remainingAmount) - Number(a.remainingAmount);
+      if (sort === 'name') return a.personName.localeCompare(b.personName);
+      if (sort === 'newest') return byNewest(a, b);
+      // due: dated debts first (soonest/most overdue first), then newest
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return byNewest(a, b);
+    });
+  }, [debts, view, search, sort]);
+
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const current = Math.min(page, pages);
+  const shown = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+  const tabs: { v: View; label: string }[] = [
+    { v: 'all', label: 'All open' },
+    { v: 'RECEIVABLE', label: 'To receive' },
+    { v: 'PAYABLE', label: 'To pay' },
+    { v: 'closed', label: 'Settled' },
+  ];
+
+  return (
+    <div className="card">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.v}
+              onClick={() => props.onView(t.v)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
+                view === t.v ? 'bg-primary-50 text-primary-700' : 'text-ink-muted hover:bg-gray-100 hover:text-ink',
+              )}
+            >
+              {t.label} <span className="ml-0.5 opacity-70">{counts[t.v]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <label className="relative min-w-0 flex-1 sm:flex-none">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <input
+              value={search}
+              onChange={(e) => props.onSearch(e.target.value)}
+              placeholder="Search name or note"
+              className="h-8 w-full rounded-lg border border-line bg-surface pl-7 sm:w-44 pr-2 text-xs text-ink focus:border-primary-500 focus:outline-none"
+            />
+          </label>
+          <select
+            value={sort}
+            onChange={(e) => props.onSort(e.target.value as Sort)}
+            aria-label="Sort by"
+            className="h-8 rounded-lg border border-line bg-surface px-2 text-xs text-ink focus:border-primary-500 focus:outline-none"
+          >
+            {(Object.keys(SORT_LABEL) as Sort[]).map((k) => <option key={k} value={k}>Sort: {SORT_LABEL[k]}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="px-4 py-10 text-center text-sm text-ink-muted">
+          {search ? 'No debts match your search.' : view === 'PAYABLE' ? 'You don’t owe anyone. 🎉' : view === 'RECEIVABLE' ? 'No one owes you right now.' : view === 'closed' ? 'No settled debts yet.' : 'No open debts.'}
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {shown.map((d) => (
+            <DebtRow
+              key={d.id}
+              debt={d}
+              currency={props.currency}
+              wallets={props.wallets}
+              expanded={props.expandedId === d.id}
+              onToggle={() => props.onToggle(d.id)}
+              onPay={() => props.onPay(d)}
+              onEdit={() => props.onEdit(d)}
+              onDelete={() => props.onDelete(d)}
+              onRemind={() => props.onRemind(d)}
+              onHistory={() => props.onHistory(d)}
+            />
+          ))}
+        </ul>
+      )}
+
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-muted">
+          <span>
+            {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, rows.length)} of {rows.length}
+          </span>
+          <Pager page={current} pages={pages} onChange={props.onPage} />
         </div>
       )}
     </div>
   );
 }
 
-function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onEditEntry, onRemind }: {
+function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onRemind, onHistory }: {
   debt: Debt;
   currency: string;
   wallets: { id: number; name: string }[];
@@ -613,148 +820,101 @@ function DebtCard({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdi
   onPay: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onEditEntry: (entry: NonNullable<Debt['entries']>[0]) => void;
   onRemind: () => void;
+  onHistory: () => void;
 }) {
   const due = dueStatus(d);
   const dueText = dueLabel(d);
-  const pct = Number(d.totalAmount) > 0 ? (Number(d.settledAmount) / Number(d.totalAmount)) * 100 : 0;
-  const isPayable = d.type === 'PAYABLE';
-  const barColor = isPayable ? '#EF4444' : '#3B82F6';
-  const nameColor = isPayable ? '#EF4444' : '#3B82F6';
+  const total = Number(d.totalAmount);
+  const pct = total > 0 ? Math.min(100, (Number(d.settledAmount) / total) * 100) : 0;
+  const receivable = d.type === 'RECEIVABLE';
+  const closed = d.status === 'CLOSED';
+  const accent = d.color ?? (receivable ? '#10B981' : '#EF4444');
+  const linkedWallet = d.walletId ? wallets.find((w) => w.id === d.walletId)?.name : null;
+  const initials = d.personName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
   return (
-    <div className="bg-white/60 rounded-xl border border-white/80 overflow-hidden">
-      {/* Clickable summary row */}
-      <button className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/40 transition-colors" onClick={onToggle}>
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: d.color ?? barColor, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.1)' }}
-        >
-          <User size={14} color="white" />
-        </div>
-        <div className="flex-1 text-left min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="font-bold text-sm truncate" style={{ color: nameColor }}>{d.personName}</p>
+    <li>
+      <button onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: accent }}>
+          {initials || '?'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="truncate text-sm font-semibold text-ink">{d.personName}</p>
             <span className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0',
-              d.status === 'CLOSED' ? 'bg-green-50 text-green-600' :
-              d.status === 'PARTIAL' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-500',
+              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+              receivable ? 'bg-income-light text-income-dark' : 'bg-expense-light text-expense-dark',
             )}>
-              {d.status.toLowerCase()}
+              {receivable ? 'Owes you' : 'You owe'}
             </span>
+            {closed && <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">Settled</span>}
+            {dueText && (
+              <span className={cn(
+                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                due.kind === 'overdue' ? 'bg-red-50 text-red-600' :
+                due.kind === 'today' || due.kind === 'soon' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500',
+              )}>
+                <CalendarClock size={10} /> {dueText}
+              </span>
+            )}
           </div>
-          {d.description && <p className="text-[10px] text-gray-400 truncate">{d.description}</p>}
-          {dueText && (
-            <span className={cn(
-              'mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-              due.kind === 'overdue' ? 'bg-red-50 text-red-600' :
-              due.kind === 'today' || due.kind === 'soon' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500',
-            )}>
-              <CalendarClock size={10} /> {dueText}
-            </span>
-          )}
+          <p className="truncate text-xs text-ink-muted">
+            {format(new Date(d.date), 'd MMM yyyy')}{d.description ? ` · ${d.description}` : ''}
+          </p>
         </div>
-        <div className="text-right flex-shrink-0 mr-1">
-          <p className="text-sm font-black" style={{ color: barColor }}>
+        <div className="hidden w-28 shrink-0 sm:block" title={`${pct.toFixed(0)}% settled`}>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: receivable ? '#10B981' : '#EF4444' }} />
+          </div>
+          <p className="mt-1 text-[10px] text-ink-muted">{pct.toFixed(0)}% settled</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className={cn('text-sm font-bold tabular-nums', closed ? 'text-ink-muted' : receivable ? 'text-income' : 'text-expense')}>
             {formatCurrency(Number(d.remainingAmount), currency)}
           </p>
-          <p className="text-[10px] text-gray-400">of {formatCurrency(Number(d.totalAmount), currency)}</p>
+          <p className="text-[10px] text-ink-muted">of {formatCurrency(total, currency)}</p>
         </div>
-        {expanded ? <ChevronUp size={14} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />}
+        {expanded ? <ChevronUp size={14} className="shrink-0 text-ink-muted" /> : <ChevronDown size={14} className="shrink-0 text-ink-muted" />}
       </button>
 
-      {/* Expanded: progress + actions */}
       {expanded && (
-        <div className="px-3 pb-3 border-t border-gray-100/60">
-          {/* Progress bar */}
-          <div className="w-full bg-gray-100 rounded-full h-1.5 my-2.5 overflow-hidden">
-            <div
-              className="h-1.5 rounded-full transition-all"
-              style={{ width: `${Math.min(100, pct)}%`, backgroundColor: barColor }}
-            />
-          </div>
-          <p className="text-[10px] text-gray-400 mb-1.5">{pct.toFixed(0)}% settled • {formatCurrency(Number(d.settledAmount), currency)} paid</p>
-          {(() => {
-            const linkedWallet = d.walletId ? wallets.find((w) => w.id === d.walletId)?.name : null;
-            const entryWalletIds = [...new Set((d.entries ?? []).map((e) => e.walletId).filter(Boolean) as number[])];
-            const entryWalletNames = entryWalletIds.map((id) => wallets.find((w) => w.id === id)?.name).filter(Boolean).join(', ');
-            return (
-              <>
-                {linkedWallet && (
-                  <p className="text-[10px] text-gray-400">
-                    {d.type === 'PAYABLE' ? 'Received in' : 'Paid from'}:{' '}
-                    <span className="font-semibold text-gray-500">{linkedWallet}</span>
-                  </p>
-                )}
-                {entryWalletNames && (
-                  <p className="text-[10px] text-gray-400">
-                    {d.type === 'PAYABLE' ? 'Paid from' : 'Collected in'}:{' '}
-                    <span className="font-semibold text-gray-500">{entryWalletNames}</span>
-                  </p>
-                )}
-                {(linkedWallet || entryWalletNames) && <div className="mb-2.5" />}
-              </>
-            );
-          })()}
-
-          {/* Entry history rows */}
-          {(d.entries ?? []).length > 0 && (
-            <div className="mb-2.5 space-y-1">
-              {(d.entries ?? []).map((e) => {
-                const walletName = e.walletId ? (wallets.find((w) => w.id === e.walletId)?.name ?? 'Unknown') : '—';
-                return (
-                  <div key={e.id} className="flex items-center justify-between text-[10px] text-gray-400 bg-gray-50 rounded-lg px-2 py-1.5">
-                    <span className="capitalize">{e.type.toLowerCase()} · {walletName}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-500">{formatCurrency(Number(e.amount), currency)}</span>
-                      <button
-                        onClick={() => onEditEntry(e)}
-                        className="text-[10px] text-amber-600 font-semibold hover:underline"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="flex flex-wrap items-center gap-2 bg-gray-50/70 px-4 pb-3 pt-2 sm:pl-16">
+          {linkedWallet && (
+            <p className="mr-auto w-full text-[11px] text-ink-muted sm:w-auto">
+              {receivable ? 'Lent from' : 'Received in'} <span className="font-semibold text-ink">{linkedWallet}</span>
+              {' · '}{formatCurrency(Number(d.settledAmount), currency)} {receivable ? 'received back' : 'paid back'}
+            </p>
           )}
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {d.status !== 'CLOSED' && (
-              <button
-                onClick={onPay}
-                className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
-                style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 4px 12px rgba(79,70,229,0.2)' }}
-              >
-                {isPayable ? 'Pay' : 'Collect'}
-              </button>
-            )}
-            {d.status !== 'CLOSED' && (
-              <button
-                onClick={onRemind}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ background: '#25D366' }}
-              >
-                <MessageCircle size={11} /> Remind
-              </button>
-            )}
+          {!closed && (
             <button
-              onClick={onEdit}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              onClick={onPay}
+              className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
+              style={{ background: 'rgb(var(--c-brand-600))' }}
             >
-              <Pencil size={11} /> Edit
+              {receivable ? 'Record collection' : 'Record payment'}
             </button>
+          )}
+          {!closed && (
             <button
-              onClick={onDelete}
-              className="px-3 py-1.5 rounded-xl text-xs transition-colors font-medium text-gray-400 hover:text-red-500 hover:bg-red-50"
+              onClick={onRemind}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: '#25D366' }}
             >
-              Delete
+              <MessageCircle size={11} /> Remind
             </button>
-          </div>
+          )}
+          <button onClick={onHistory} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 bg-white border border-line hover:bg-gray-100 transition-colors">
+            <History size={11} /> History
+          </button>
+          <button onClick={onEdit} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 bg-white border border-line hover:bg-gray-100 transition-colors">
+            <Pencil size={11} /> Edit
+          </button>
+          <button onClick={onDelete} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+            <Trash2 size={11} /> Delete
+          </button>
         </div>
       )}
-    </div>
+    </li>
   );
 }

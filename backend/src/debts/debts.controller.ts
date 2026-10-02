@@ -10,6 +10,7 @@ import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
 import { UpdateDebtEntryDto } from './dto/update-debt-entry.dto';
 import { DebtPaymentDto } from './dto/debt-payment.dto';
+import { DebtActivityQueryDto } from './dto/debt-activity-query.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('debts')
@@ -19,6 +20,12 @@ export class DebtsController {
   @Get()
   findAll(@Query('accountId', ParseIntPipe) accountId: number, @CurrentUser() user: JwtUser) {
     return this.debtsService.findAll(accountId, user.sub);
+  }
+
+  // Declared before ':id' so "activity" isn't parsed as an id
+  @Get('activity')
+  activity(@Query() query: DebtActivityQueryDto, @CurrentUser() user: JwtUser) {
+    return this.debtsService.activity(user.sub, query);
   }
 
   @Get(':id')
