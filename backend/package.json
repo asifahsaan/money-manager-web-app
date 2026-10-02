@@ -15,6 +15,7 @@
     "test": "jest",
     "backup": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/backup-database.ts",
     "restore": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/restore-database.ts",
+    "repair:opening-balances": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/repair-opening-balances.ts",
     "mirror:setup": "ts-node scripts/mirror/build-mirror-schema.ts && prisma generate --schema prisma/mirror/schema.prisma && prisma db push --schema prisma/mirror/schema.prisma --skip-generate",
     "mirror:sync": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/mirror/sync-mirror.ts"
   },

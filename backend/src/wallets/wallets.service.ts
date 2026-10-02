@@ -106,22 +106,46 @@ export class WalletsService {
 
   async update(id: number, userId: number, dto: UpdateWalletDto): Promise<Wallet> {
     const wallet = await this.findOne(id, userId);
-
-    // If initial balance changes, adjust current balance by the difference
-    let currentBalanceDelta = 0;
-    if (dto.initialBalance !== undefined) {
-      const oldInitial = Number(wallet.initialBalance);
-      currentBalanceDelta = dto.initialBalance - oldInitial;
+    if (dto.initialBalance === undefined || Number(dto.initialBalance) === Number(wallet.initialBalance)) {
+      return this.prisma.wallet.update({ where: { id }, data: dto });
     }
 
-    return this.prisma.wallet.update({
-      where: { id },
-      data: {
-        ...dto,
-        ...(currentBalanceDelta !== 0 && {
-          currentBalance: { increment: currentBalanceDelta },
-        }),
-      },
+    // The opening balance is a real transaction (balances are rebuilt from
+    // transactions in statements and the tax report), so changing it must
+    // move that transaction too — not just the stored balance.
+    const newInitial = Number(dto.initialBalance);
+    const delta = newInitial - Number(wallet.initialBalance);
+    return this.prisma.$transaction(async (tx) => {
+      const opening = await tx.transaction.findFirst({ where: { walletId: id, isOpeningBalance: true } });
+      if (opening) {
+        if (newInitial > 0) {
+          await tx.transaction.update({ where: { id: opening.id }, data: { amount: newInitial } });
+        } else {
+          await tx.transaction.delete({ where: { id: opening.id } });
+        }
+      } else if (newInitial > 0) {
+        // Older wallets may have none: create it on the day the wallet was opened.
+        // Its full amount is new to the ledger, while the stored balance only
+        // moves by the delta — this also heals wallets edited before this fix.
+        const c = wallet.createdAt;
+        const day = new Date(Date.UTC(c.getUTCFullYear(), c.getUTCMonth(), c.getUTCDate()));
+        await tx.transaction.create({
+          data: {
+            accountId: wallet.accountId,
+            type: TransactionType.INCOME,
+            amount: newInitial,
+            date: day,
+            datetime: c,
+            description: 'Opening Balance',
+            isOpeningBalance: true,
+            walletId: id,
+          },
+        });
+      }
+      return tx.wallet.update({
+        where: { id },
+        data: { ...dto, currentBalance: { increment: delta } },
+      });
     });
   }
 
