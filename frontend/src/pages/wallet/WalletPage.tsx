@@ -15,9 +15,10 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
-  Pencil,
   Eye,
   EyeOff,
+  Palette,
+  Sparkles,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAccountStore } from '@/stores/account.store';
@@ -29,6 +30,8 @@ import { BudgetTab } from './components/BudgetTab';
 import { GoalsTab } from './components/GoalsTab';
 import { DebtTab } from './components/DebtTab';
 import { RecurringTab } from './components/RecurringTab';
+import { WalletCard, WalletLogo } from './components/WalletCard';
+import { WALLET_BRANDS, detectBrand, walletTheme } from '@/lib/wallet-brands';
 
 const WALLET_TYPES: { value: WalletType; label: string; Icon: LucideIcon }[] = [
   { value: 'CASH', label: 'Cash', Icon: Banknote },
@@ -48,6 +51,8 @@ const schema = z.object({
   initialBalance: z.string().optional(),
   setBalance: z.string().optional(),
   color: z.string().optional(),
+  // '' = detect from name, 'none' = plain colour, otherwise a brand id
+  brand: z.string().optional(),
   includedInTotal: z.boolean().optional(),
 });
 
@@ -136,6 +141,17 @@ export function WalletPage() {
   });
 
   const selectedColor = watch('color');
+  const selectedBrand = watch('brand') ?? '';
+  const watchedName = watch('name') ?? '';
+  const watchedType = watch('type');
+  const brandIcon = (b: string) => (b ? `brand:${b}` : '');
+  const previewTheme = walletTheme({
+    name: watchedName,
+    type: watchedType,
+    color: selectedColor ?? null,
+    icon: brandIcon(selectedBrand) || null,
+  });
+  const autoBrand = detectBrand(watchedName);
 
   const totalBalance = wallets
     .filter((w) => w.includedInTotal && !w.archived)
@@ -162,6 +178,7 @@ export function WalletPage() {
           name: data.name,
           type: data.type,
           color: data.color,
+          icon: brandIcon(data.brand ?? ''),
           ...(computedInitialBalance !== undefined && { initialBalance: computedInitialBalance }),
           includedInTotal: data.includedInTotal ?? true,
         });
@@ -171,6 +188,7 @@ export function WalletPage() {
         name: data.name,
         type: data.type,
         color: data.color,
+        icon: brandIcon(data.brand ?? '') || undefined,
         initialBalance: data.initialBalance ? Number(data.initialBalance) : 0,
         includedInTotal: data.includedInTotal ?? true,
       });
@@ -207,7 +225,7 @@ export function WalletPage() {
 
   function openAdd() {
     setEditing(null);
-    reset({ type: 'CASH', color: WALLET_COLORS[0], includedInTotal: true, name: '', initialBalance: '' });
+    reset({ type: 'CASH', color: WALLET_COLORS[0], brand: '', includedInTotal: true, name: '', initialBalance: '' });
     setShowForm(true);
   }
 
@@ -218,6 +236,7 @@ export function WalletPage() {
       name: w.name,
       type: w.type,
       color: w.color ?? WALLET_COLORS[0],
+      brand: w.icon?.startsWith('brand:') ? w.icon.slice(6) : '',
       initialBalance: '',
       includedInTotal: w.includedInTotal,
     });
@@ -365,86 +384,19 @@ export function WalletPage() {
               <p className="text-gray-400 text-sm">No wallets yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {wallets.map((w) => {
-                const TypeInfo = WALLET_TYPES.find((t) => t.value === w.type) ?? WALLET_TYPES[0];
-                const balance = Number(w.currentBalance);
-                return (
-                  <div
-                    key={w.id}
-                    onClick={() => navigate(`/wallet/${w.id}`)}
-                    className="glass-card p-4 cursor-pointer hover:-translate-y-0.5 transition-all hover:shadow-card-hover"
-                  >
-                    {/* Top row: icon + toggle + edit */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                        style={{
-                          backgroundColor: w.color ?? '#6B7280',
-                          boxShadow: 'inset 0 -8px 18px rgba(0,0,0,0.08)',
-                        }}
-                      >
-                        <TypeInfo.Icon size={22} color="white" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Toggle switch */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleMutation.mutate(w); }}
-                          className={cn(
-                            'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
-                            w.includedInTotal ? 'bg-amber-400' : 'bg-gray-200',
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                              w.includedInTotal ? 'translate-x-5' : 'translate-x-0.5',
-                            )}
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleWallet(w.id); }}
-                          className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors"
-                        >
-                          {isWalletHidden(w.id) ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => openEdit(w, e)}
-                          className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Name */}
-                    <p className="font-bold text-gray-800 mb-1">{w.name}</p>
-
-                    {/* Balance */}
-                    <p className={cn('text-2xl font-black mb-3', balance >= 0 ? 'text-income' : 'text-expense')}>
-                      {isWalletHidden(w.id) ? '••••' : formatCurrency(balance, currency)}
-                    </p>
-
-                    {/* Badges */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-                        {TypeInfo.label.toLowerCase()}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-[10px] px-2 py-0.5 rounded-full font-medium',
-                          w.includedInTotal ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-400',
-                        )}
-                      >
-                        {w.includedInTotal ? 'Included' : 'Excluded'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {wallets.map((w) => (
+                <WalletCard
+                  key={w.id}
+                  wallet={w}
+                  currency={currency}
+                  hidden={isWalletHidden(w.id)}
+                  onOpen={() => navigate(`/wallet/${w.id}`)}
+                  onToggleIncluded={() => toggleMutation.mutate(w)}
+                  onToggleHidden={() => toggleWallet(w.id)}
+                  onEdit={(e) => openEdit(w, e)}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -499,7 +451,59 @@ export function WalletPage() {
                 </div>
               </div>
 
-              {/* Color */}
+              {/* Live preview */}
+              <div className="flex items-center gap-3 rounded-xl p-3 text-white" style={{ background: previewTheme.background }}>
+                <WalletLogo theme={previewTheme} type={watchedType} size={36} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{watchedName || 'Wallet name'}</p>
+                  <p className="text-[11px] text-white/70">{previewTheme.brand?.name ?? 'Custom colour'}</p>
+                </div>
+              </div>
+
+              {/* Bank / wallet theme */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-2">Bank / wallet theme</label>
+                <div className="grid max-h-44 grid-cols-3 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-4">
+                  {[
+                    { id: '', label: autoBrand ? `Auto · ${autoBrand.name}` : 'Auto', Icon: Sparkles },
+                    { id: 'none', label: 'Plain colour', Icon: Palette },
+                  ].map(({ id, label, Icon }) => (
+                    <button
+                      key={id || 'auto'}
+                      type="button"
+                      onClick={() => setValue('brand', id)}
+                      className={cn(
+                        'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 py-1.5 text-center transition-all',
+                        selectedBrand === id ? 'border-amber-400 bg-amber-50' : 'border-gray-100 hover:border-gray-200',
+                      )}
+                    >
+                      <Icon size={16} className={selectedBrand === id ? 'text-amber-600' : 'text-gray-400'} />
+                      <span className="line-clamp-2 text-[10px] leading-tight text-gray-600">{label}</span>
+                    </button>
+                  ))}
+                  {WALLET_BRANDS.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setValue('brand', b.id)}
+                      className={cn(
+                        'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 py-1.5 text-center transition-all',
+                        selectedBrand === b.id ? 'border-amber-400 bg-amber-50' : 'border-gray-100 hover:border-gray-200',
+                      )}
+                    >
+                      <span
+                        className="flex h-5 min-w-[28px] items-center justify-center rounded-md px-1 text-[9px] font-black text-white"
+                        style={{ background: `linear-gradient(135deg, ${b.from}, ${b.to})` }}
+                      >
+                        {b.mark}
+                      </span>
+                      <span className="line-clamp-2 text-[10px] leading-tight text-gray-600">{b.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {!previewTheme.brand && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-2">Color</label>
                 <div className="flex gap-2 flex-wrap items-center">
@@ -543,6 +547,7 @@ export function WalletPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Balance */}
               {editing ? (

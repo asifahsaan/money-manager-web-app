@@ -23,6 +23,8 @@ import { walletService } from '@/services/wallet.service';
 import { transactionService } from '@/services/transaction.service';
 import { Transaction, WalletType } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
+import { walletTheme } from '@/lib/wallet-brands';
+import { WalletLogo } from './components/WalletCard';
 import { TransactionItem } from '@/pages/transactions/components/TransactionItem';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
 
@@ -101,9 +103,7 @@ export function WalletDetailPage() {
       <div
         className="text-white px-4 py-5"
         style={{
-          background: wallet?.color
-            ? `linear-gradient(135deg, ${wallet.color}dd, ${wallet.color}99)`
-            : 'rgb(var(--c-brand-600))',
+          background: wallet ? walletTheme(wallet).background : 'rgb(var(--c-brand-600))',
         }}
       >
         <div className="flex items-center gap-3 mb-4">
@@ -114,9 +114,13 @@ export function WalletDetailPage() {
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-3 flex-1">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <TypeIcon size={20} color="white" />
-            </div>
+            {wallet ? (
+              <WalletLogo theme={walletTheme(wallet)} type={wallet.type} />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <TypeIcon size={20} color="white" />
+              </div>
+            )}
             <div>
               <p className="font-semibold text-base">
                 {loadingWallet ? '...' : wallet?.name}

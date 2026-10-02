@@ -15,10 +15,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: '1.10.1',
+    version: '1.11.0',
     date: '2026-10-02',
-    title: 'Stay signed in',
+    title: 'Bank-themed wallet cards',
     changes: [
+      { kind: 'new', text: 'Wallet cards now look like your bank or wallet — Meezan, Alfalah, HBL, UBL, MCB, JazzCash, Easypaisa and 17 more get their own colours and badge.' },
+      { kind: 'new', text: 'Detected from the wallet name automatically; pick a different bank or a plain colour in Edit wallet, with a live preview.' },
+      { kind: 'improved', text: 'Smaller wallet cards — up to four in a row on wide screens, so you see all your wallets at once.' },
       { kind: 'fixed', text: 'You are no longer logged out by surprise when the server is slow to respond — the app simply tries again.' },
     ],
   },
