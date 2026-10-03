@@ -14,6 +14,9 @@ const MONEY_QUERY_ROOTS = new Set([
   'goals',
   'debts',
   'overview',
+  'recurrings',
+  'insights',
+  'entry-suggestions',
 ]);
 
 export function invalidateMoneyQueries(queryClient: QueryClient) {

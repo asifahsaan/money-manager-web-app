@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecurringDto } from './dto/create-recurring.dto';
 import { UpdateRecurringDto } from './dto/update-recurring.dto';
 import { Prisma, Recurring, RecurringFrequency } from '@prisma/client';
-import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import { alignToWeekdays, nextOccurrenceAfter, timeInPakistan, todayInPakistan } from './schedule';
 import { assertWalletsInAccount, assertCategoriesInAccount } from '../common/utils/ownership';
 
 @Injectable()
@@ -41,7 +41,7 @@ export class RecurringsService {
         time: dto.time ?? null,
         startDate,
         // e.g. started on a Sunday but repeats Mon/Tue/Fri → first due Monday
-        nextOccurrence: this.alignToWeekdays(startDate, weekdays),
+        nextOccurrence: alignToWeekdays(startDate, weekdays),
         endDate: dto.endDate ? new Date(dto.endDate) : null,
       },
       include: { category: true },
@@ -57,7 +57,7 @@ export class RecurringsService {
     const scheduleChanged = dto.frequency !== undefined || dto.weekdays !== undefined;
     const weekdays = scheduleChanged ? this.cleanWeekdays(frequency, dto.weekdays ?? r.weekdays) : r.weekdays;
     const base = dto.nextOccurrence ? new Date(dto.nextOccurrence) : r.nextOccurrence;
-    const nextOccurrence = scheduleChanged || dto.nextOccurrence ? this.alignToWeekdays(base, weekdays) : undefined;
+    const nextOccurrence = scheduleChanged || dto.nextOccurrence ? alignToWeekdays(base, weekdays) : undefined;
 
     return this.prisma.recurring.update({
       where: { id: r.id },
@@ -96,8 +96,8 @@ export class RecurringsService {
    */
   async processDue(accountId: number, userId: number) {
     await this.verifyOwnership(accountId, userId);
-    const today = this.todayInPakistan();
-    const nowTime = this.timeInPakistan();
+    const today = todayInPakistan();
+    const nowTime = timeInPakistan();
     // Due = an earlier day, or today once its time (if any) has come
     const isDue = (r: { nextOccurrence: Date; time: string | null }) =>
       r.nextOccurrence < today || (r.nextOccurrence.getTime() === today.getTime() && (!r.time || r.time <= nowTime));
@@ -126,7 +126,7 @@ export class RecurringsService {
   /** Creates the transaction for r.nextOccurrence and moves the schedule on. Null if already taken. */
   private async postOccurrence(tx: Prisma.TransactionClient, r: Recurring) {
     const txDate = r.nextOccurrence;
-    const nextOccurrence = this.calculateNext(txDate, r.frequency, r.weekdays);
+    const nextOccurrence = nextOccurrenceAfter(txDate, r.frequency, r.weekdays);
 
     // Claim this occurrence first; a parallel call sees count 0 and backs off
     const claimed = await tx.recurring.updateMany({
@@ -166,17 +166,6 @@ export class RecurringsService {
     return { transaction, nextOccurrence };
   }
 
-  /** Current time in Pakistan as "HH:MM". */
-  private timeInPakistan(): string {
-    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
-  }
-
-  /** Today's date in Pakistan as a UTC-midnight Date, matching how @db.Date columns come back. */
-  private todayInPakistan(): Date {
-    const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
-    return new Date(`${ymd}T00:00:00.000Z`);
-  }
-
   async delete(id: number, userId: number) {
     const r = await this.findAndVerify(id, userId);
     await this.prisma.recurring.delete({ where: { id: r.id } });
@@ -186,25 +175,6 @@ export class RecurringsService {
   private cleanWeekdays(frequency: RecurringFrequency, weekdays?: number[]): number[] {
     if (frequency !== 'WEEKLY' || !weekdays?.length) return [];
     return [...new Set(weekdays)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
-  }
-
-  /** The first date on or after `from` that falls on one of `weekdays` (dates are UTC midnights). */
-  private alignToWeekdays(from: Date, weekdays: number[]): Date {
-    if (!weekdays.length) return from;
-    let d = from;
-    for (let i = 0; i < 7 && !weekdays.includes(d.getUTCDay()); i++) d = addDays(d, 1);
-    return d;
-  }
-
-  private calculateNext(from: Date, frequency: RecurringFrequency, weekdays: number[] = []): Date {
-    if (frequency === 'WEEKLY' && weekdays.length) return this.alignToWeekdays(addDays(from, 1), weekdays);
-    switch (frequency) {
-      case 'DAILY': return addDays(from, 1);
-      case 'WEEKLY': return addWeeks(from, 1);
-      case 'MONTHLY': return addMonths(from, 1);
-      case 'YEARLY': return addYears(from, 1);
-      default: return addMonths(from, 1);
-    }
   }
 
   private async findAndVerify(id: number, userId: number) {

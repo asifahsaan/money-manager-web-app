@@ -15,6 +15,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.13.0',
+    date: '2026-10-04',
+    title: 'Smarter money',
+    changes: [
+      { kind: 'new', text: 'Month-end forecast on Overview — what each wallet should have on the last day, from your recurring items and your usual day-to-day spending.' },
+      { kind: 'new', text: 'Heads up: warns when a wallet is about to go below zero (and which wallet to top it up from), and when a budget will run out before the month ends.' },
+      { kind: 'new', text: 'Budget cards say when the money runs out at your current pace, counting only the budget’s spending days.' },
+      { kind: 'new', text: 'Quick add: type one line like “300 rider cash”, “salary 180k meezan”, “2000 meezan to jazzcash” or “dinner 2.3k yesterday 9pm” and the form fills itself.' },
+      { kind: 'new', text: 'As you type a note, your past entries pop up — pick one to fill its category, wallet and amount.' },
+    ],
+  },
+  {
     version: '1.12.0',
     date: '2026-10-03',
     title: 'A tighter layout & a new calendar',

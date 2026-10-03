@@ -18,6 +18,8 @@ import { Transaction, TransactionType, Wallet, CategoryType } from '@/types';
 import { CategoryChips } from './transaction-form/CategoryChips';
 import { AttachmentThumbs, ACCEPTED_IMAGES } from './transaction-form/Attachments';
 import { lastWallet, recordCategoryUse, rememberWallet } from './transaction-form/preferences';
+import { QuickAddBar, NoteSuggestions, type SmartFill } from './transaction-form/SmartEntry';
+import type { EntrySuggestion } from '@/services/insights.service';
 
 const schema = z
   .object({
@@ -148,6 +150,38 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showFee, setShowFee] = useState(() => !!editing && Number(editing.feeAmount) > 0);
   const [addAnother, setAddAnother] = useState(false);
+  const [noteFocused, setNoteFocused] = useState(false);
+  const note = watch('description') ?? '';
+
+  // Fill the form from quick-add or a past entry. Switching type normally clears
+  // the category (see below) — mark the new type as seen so a filled one stays.
+  function applyFill(f: SmartFill) {
+    if (f.type && f.type !== getValues('type')) {
+      prevType.current = f.type;
+      setValue('type', f.type);
+    }
+    const t = f.type ?? getValues('type');
+    if (f.amount !== undefined) setValue('amount', String(f.amount), { shouldValidate: true });
+    if (f.description !== undefined) setValue('description', f.description);
+    if (f.date) setValue('date', f.date);
+    if (f.time) setValue('time', f.time);
+    if (t === 'TRANSFER') {
+      if (f.walletId) setValue('fromWalletId', f.walletId);
+      if (f.toWalletId) setValue('toWalletId', f.toWalletId);
+    } else {
+      if (f.walletId) setValue('walletId', f.walletId, { shouldValidate: true });
+      if (f.categoryId !== undefined) setValue('categoryId', f.categoryId ?? undefined);
+    }
+  }
+  const pickPast = (s: EntrySuggestion) =>
+    applyFill({
+      type: s.type,
+      description: s.description,
+      categoryId: s.categoryId,
+      walletId: s.walletId ?? undefined,
+      // keep an amount already typed
+      ...(getValues('amount') ? {} : { amount: s.amount }),
+    });
 
   // New transaction: start from the wallet used last time
   useEffect(() => {
@@ -291,6 +325,8 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            {!editing && <QuickAddBar accountId={accountId} wallets={activeWallets} currency={currency} onFill={applyFill} />}
+
             {/* Amount */}
             <div>
               <div className="flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary-500">
@@ -430,11 +466,21 @@ export function TransactionModal({ accountId, currency, onClose, editing, defaul
             <div>
               <div className="relative">
                 <input
-                  {...register('description')}
+                  {...register('description', { onBlur: () => setNoteFocused(false) })}
+                  onFocus={() => setNoteFocused(true)}
                   type="text"
                   placeholder="Add a note (optional)"
                   aria-label="Note"
+                  autoComplete="off"
                   className={cn(CONTROL, 'pr-11')}
+                />
+                <NoteSuggestions
+                  accountId={accountId}
+                  note={note}
+                  type={type}
+                  currency={currency}
+                  visible={noteFocused && !editing}
+                  onPick={(s) => { pickPast(s); setNoteFocused(false); }}
                 />
                 <label
                   title="Attach a photo"

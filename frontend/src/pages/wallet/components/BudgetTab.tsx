@@ -15,6 +15,7 @@ import { resolveIcon } from '@/lib/category-icons';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
 import { WeekdayPicker, weekdaysLabel, countWeekdays } from '@/components/shared/WeekdayPicker';
+import { budgetPace, paceDay } from '@/lib/budget-pace';
 
 const PERIODS: { value: PeriodType; label: string }[] = [
   { value: 'DAILY', label: 'Daily' },
@@ -266,6 +267,7 @@ function BudgetCard({ budget: b, currency, onEdit, onDelete, deleteLabel }: {
   const spendDaysLeft = daysLeft > 0 ? countWeekdays(new Date(), end, spendDays) : 0;
   const perDay = spendDaysLeft > 0 && left > 0 ? left / spendDaysLeft : 0;
   const dayWord = spendDays.length ? `${weekdaysLabel(spendDays)} day` : 'day';
+  const pace = budgetPace(b);
 
   return (
     <div className="card flex h-[124px] flex-col p-3.5">
@@ -310,6 +312,10 @@ function BudgetCard({ budget: b, currency, onEdit, onDelete, deleteLabel }: {
         <p className={cn('mt-1 flex items-center gap-1 truncate text-[11px]', left < 0 ? 'font-semibold text-expense' : 'text-ink-muted')}>
           {left < 0 ? (
             <><AlertTriangle size={11} /> Over by {formatCurrency(-left, currency)}</>
+          ) : pace.status === 'will-run-out' && pace.runsOutOn ? (
+            <span className="truncate font-semibold text-orange-600" title={`At this pace about ${formatCurrency(Math.round(pace.projected), currency)} by the end`}>
+              At this pace it runs out ~{paceDay(pace.runsOutOn)}
+            </span>
           ) : (
             <>{formatCurrency(left, currency)} left{perDay > 0 && ` · about ${formatCurrency(Math.floor(perDay), currency)} per ${dayWord}`}</>
           )}

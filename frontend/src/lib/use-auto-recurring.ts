@@ -2,12 +2,11 @@ import { useEffect } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { recurringService } from '@/services/recurring.service';
+import { invalidateMoneyQueries } from '@/lib/queries';
 
-/** Everything that shows money, refreshed after recurring entries are added. */
+/** Everything that shows money (incl. the forecast), refreshed after recurring entries are added. */
 export function refreshAfterRecurring(qc: QueryClient) {
-  for (const key of ['transactions', 'calendar-transactions', 'wallets', 'wallet', 'recurrings', 'budgets', 'stats-summary', 'stats-trend', 'wallet-stats']) {
-    qc.invalidateQueries({ queryKey: [key] });
-  }
+  return invalidateMoneyQueries(qc);
 }
 
 // While the app is open and visible; hidden tabs don't poll (they catch up on return)

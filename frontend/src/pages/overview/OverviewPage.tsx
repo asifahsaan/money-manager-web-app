@@ -25,6 +25,7 @@ import { TransactionModal } from '@/pages/transactions/components/TransactionMod
 import { walletTheme } from '@/lib/wallet-brands';
 import { WalletLogo, walletSubtitle } from '@/pages/wallet/components/WalletCard';
 import { CategoryBreakdownModal } from './CategoryBreakdownModal';
+import { InsightsCard } from './InsightsCard';
 import type { Debt, Transaction } from '@/types';
 import { CategoryIcon } from '@/pages/transactions/components/CategoryIcon';
 import { CHART, chartChrome } from '@/lib/chart-colors';
@@ -361,6 +362,10 @@ export function OverviewPage() {
           />
         </div>
       </div>
+
+      {accountId && (
+        <InsightsCard accountId={accountId} currency={currency} budgets={budgets ?? []} hideAmounts={hidden.has('networth')} />
+      )}
 
       {dueDebts.length > 0 && (
         <section className="card" aria-label="Debts due">
