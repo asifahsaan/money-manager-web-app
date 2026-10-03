@@ -16,9 +16,10 @@ export const budgetService = {
     periodType: string;
     startDate: string;
     endDate: string;
+    activeWeekdays?: number[];
   }) => apiClient.post<ApiResponse<Budget>>('/budgets', data).then((r) => r.data.data),
 
-  update: (id: number, data: { amount?: number; startDate?: string; endDate?: string }) =>
+  update: (id: number, data: { amount?: number; startDate?: string; endDate?: string; activeWeekdays?: number[] }) =>
     apiClient.patch<ApiResponse<Budget>>(`/budgets/${id}`, data).then((r) => r.data.data),
 
   delete: (id: number) => apiClient.delete(`/budgets/${id}`).then((r) => r.data),

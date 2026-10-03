@@ -8,6 +8,7 @@ import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
 import { apiErrorMessage } from '@/lib/api-error';
 import { refreshAfterRecurring } from '@/lib/use-auto-recurring';
 import { cn } from '@/lib/utils';
+import { WeekdayPicker } from '@/components/shared/WeekdayPicker';
 import type { Category, Recurring, RecurringFrequency, TransactionType, Wallet } from '@/types';
 
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -73,7 +74,6 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
   const [endDate, setEndDate] = useState(editing?.endDate?.slice(0, 10) ?? '');
   const [error, setError] = useState<string | null>(null);
 
-  const toggleDay = (d: number) => setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
 
   const save = useMutation({
     mutationFn: async () => {
@@ -246,22 +246,7 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
 
             {schedule === 'DAYS' && (
               <div className="mt-2.5">
-                <div className="grid grid-cols-7 gap-1">
-                  {CHIP_ORDER.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => toggleDay(d)}
-                      aria-pressed={days.includes(d)}
-                      className={cn(
-                        'h-8 rounded-lg border text-xs font-semibold transition-colors',
-                        days.includes(d) ? 'border-primary-500 bg-primary-600 text-white' : 'border-line text-ink-muted hover:border-gray-300 hover:text-ink',
-                      )}
-                    >
-                      {WEEKDAY_SHORT[d]}
-                    </button>
-                  ))}
-                </div>
+                <WeekdayPicker value={days} onChange={setDays} presets={false} />
                 <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
                   <button type="button" onClick={() => setDays([1, 2, 3, 4, 5])} className="font-medium text-primary-600 hover:underline">Mon–Fri</button>
                   <button type="button" onClick={() => setDays([0, 6])} className="font-medium text-primary-600 hover:underline">Weekends</button>

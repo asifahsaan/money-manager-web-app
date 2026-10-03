@@ -65,6 +65,7 @@ export class BudgetsService {
         periodType: dto.periodType,
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
+        activeWeekdays: cleanWeekdays(dto.activeWeekdays),
       },
       include: { category: true },
     });
@@ -78,6 +79,7 @@ export class BudgetsService {
         ...(dto.amount !== undefined && { amount: dto.amount }),
         ...(dto.startDate && { startDate: new Date(dto.startDate) }),
         ...(dto.endDate && { endDate: new Date(dto.endDate) }),
+        ...(dto.activeWeekdays !== undefined && { activeWeekdays: cleanWeekdays(dto.activeWeekdays) }),
       },
       include: { category: true },
     });
@@ -99,4 +101,10 @@ export class BudgetsService {
     const acc = await this.prisma.account.findUnique({ where: { id: accountId } });
     if (!acc || acc.userId !== userId) throw new ForbiddenException('Access denied');
   }
+}
+
+/** Sorted, unique 0–6; all seven days is stored as [] (= every day). */
+function cleanWeekdays(days?: number[]): number[] {
+  const d = [...new Set(days ?? [])].filter((x) => x >= 0 && x <= 6).sort((a, b) => a - b);
+  return d.length === 7 ? [] : d;
 }

@@ -165,6 +165,8 @@ export interface Budget {
   periodType: PeriodType;
   startDate: string;
   endDate: string;
+  /** Days of the week this money is spent on (0 = Sunday … 6 = Saturday); empty = every day */
+  activeWeekdays: number[];
   spent: number;
   remaining: number;
   percentage: number;

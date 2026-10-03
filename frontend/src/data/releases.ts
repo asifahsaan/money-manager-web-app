@@ -31,6 +31,7 @@ export const RELEASES: Release[] = [
       { kind: 'improved', text: 'After “Hide all”, tap the eye on any single card to show just that one — no need to reveal everything.' },
       { kind: 'new', text: 'Budgets, Goals and Recurring each get a summary row — total limit and what’s left, how much you’ve saved, monthly bills and what’s due now.' },
       { kind: 'improved', text: 'Budgets show how far over you are (e.g. 160%), days left and how much you can spend per day.' },
+      { kind: 'new', text: 'Budgets: choose the days you actually spend (e.g. transport Mon–Fri) — the daily allowance and days left count only those days. Budgets can now be edited too.' },
       { kind: 'improved', text: 'Goals show days left and how much to save each month to reach them.' },
       { kind: 'improved', text: 'Recurring is now a compact list sorted by what’s due next, with Run and Delete on each row.' },
       { kind: 'improved', text: 'Tabs in Wallets & Plans show counts, and turn red when a budget is over or a debt is overdue.' },

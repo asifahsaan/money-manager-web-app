@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { X, Trash2, AlertTriangle, CalendarDays } from 'lucide-react';
+import { X, Trash2, AlertTriangle, CalendarDays, Pencil } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { budgetService } from '@/services/budget.service';
 import { categoryService } from '@/services/category.service';
@@ -14,6 +14,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { resolveIcon } from '@/lib/category-icons';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
+import { WeekdayPicker, weekdaysLabel, countWeekdays } from '@/components/shared/WeekdayPicker';
 
 const PERIODS: { value: PeriodType; label: string }[] = [
   { value: 'DAILY', label: 'Daily' },
@@ -40,6 +41,9 @@ export function BudgetTab() {
   const currency = activeAccount?.currency ?? 'Rs.';
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Budget | null>(null);
+  // Spending days for the per-day allowance; all seven = every day
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   const { data: budgets = [], isLoading } = useQuery({
@@ -60,23 +64,50 @@ export function BudgetTab() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) =>
-      budgetService.create({
-        accountId: accountId!,
-        categoryId: Number(data.categoryId),
-        amount: Number(data.amount),
-        periodType: data.periodType as PeriodType,
-        startDate: data.startDate,
-        endDate: data.endDate,
-      }),
-    onSuccess: () => {
-      toast.success('Budget created');
-      qc.invalidateQueries({ queryKey: ['budgets', accountId] });
-      setShowForm(false);
-      reset();
+    mutationFn: (data: FormData) => {
+      const activeWeekdays = days.length === 7 ? [] : [...days].sort((a, b) => a - b);
+      return editing
+        ? budgetService.update(editing.id, { amount: Number(data.amount), startDate: data.startDate, endDate: data.endDate, activeWeekdays })
+        : budgetService.create({
+            accountId: accountId!,
+            categoryId: Number(data.categoryId),
+            amount: Number(data.amount),
+            periodType: data.periodType as PeriodType,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            activeWeekdays,
+          });
     },
-    onError: () => toast.error('Failed to create budget'),
+    onSuccess: () => {
+      toast.success(editing ? 'Budget updated' : 'Budget created');
+      qc.invalidateQueries({ queryKey: ['budgets'] });
+      closeForm();
+    },
+    onError: () => toast.error(editing ? 'Failed to update budget' : 'Failed to create budget'),
   });
+
+  function openAdd() {
+    setEditing(null);
+    setDays([0, 1, 2, 3, 4, 5, 6]);
+    reset({ periodType: 'MONTHLY', startDate: today, endDate: monthEnd, categoryId: '', amount: '' });
+    setShowForm(true);
+  }
+  function openEdit(b: Budget) {
+    setEditing(b);
+    setDays(b.activeWeekdays?.length ? b.activeWeekdays : [0, 1, 2, 3, 4, 5, 6]);
+    reset({
+      categoryId: String(b.categoryId),
+      amount: String(Number(b.amount)),
+      periodType: b.periodType,
+      startDate: b.startDate.substring(0, 10),
+      endDate: b.endDate.substring(0, 10),
+    });
+    setShowForm(true);
+  }
+  function closeForm() {
+    setShowForm(false);
+    setEditing(null);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => budgetService.delete(id),
@@ -95,7 +126,7 @@ export function BudgetTab() {
         title="Budgets"
         meta={budgets.length ? `${budgets.length} active · spending limits per category` : 'Set a spending limit per category'}
       >
-        <AddButton label="Add budget" onClick={() => setShowForm(true)} />
+        <AddButton label="Add budget" onClick={() => openAdd()} />
       </SectionBar>
 
       {budgets.length > 0 && <BudgetSummary budgets={budgets} currency={currency} />}
@@ -103,17 +134,20 @@ export function BudgetTab() {
       {/* Create modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowForm(false)} />
+          <div className="absolute inset-0 bg-black/40" onClick={closeForm} />
           <div className="relative bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <span className="font-bold text-sm text-gray-800">New Budget</span>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-gray-100">
+              <span className="font-bold text-sm text-gray-800">{editing ? `Edit budget — ${editing.category.name}` : 'New Budget'}</span>
+              <button onClick={closeForm} className="p-1 rounded-lg hover:bg-gray-100">
                 <X size={15} className="text-gray-400" />
               </button>
             </div>
             <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="p-5 space-y-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Category</label>
+                {editing ? (
+                  <p className="flex h-10 items-center rounded-xl border border-line bg-gray-50 px-3 text-sm text-ink-muted">{editing.category.name}</p>
+                ) : (
                 <CategoryCombobox
                   categories={categories}
                   type="EXPENSE"
@@ -123,19 +157,22 @@ export function BudgetTab() {
                   placeholder="Search or pick a category"
                   invalid={!!errors.categoryId}
                 />
+                )}
                 {errors.categoryId && <p className="text-expense text-xs mt-1">{errors.categoryId.message}</p>}
               </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Amount</label>
-                <input type="number" step="0.01" {...register('amount')} placeholder="0.00"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
-                {errors.amount && <p className="text-expense text-xs mt-1">{errors.amount.message}</p>}
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Period</label>
-                <select {...register('periodType')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
-                  {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Amount</label>
+                  <input type="number" step="0.01" {...register('amount')} placeholder="0.00"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+                  {errors.amount && <p className="text-expense text-xs mt-1">{errors.amount.message}</p>}
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Period</label>
+                  <select {...register('periodType')} disabled={!!editing} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white disabled:bg-gray-50">
+                    {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -147,10 +184,19 @@ export function BudgetTab() {
                   <input type="date" {...register('endDate')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
                 </div>
               </div>
-              <button type="submit" disabled={createMutation.isPending}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Spending days <span className="text-gray-400">— {weekdaysLabel(days.length === 7 ? [] : days)}</span>
+                </label>
+                <WeekdayPicker value={days} onChange={setDays} />
+                <p className="mt-1 text-[11px] text-gray-400">
+                  The daily allowance is worked out over these days only — e.g. transport Mon–Fri skips weekends.
+                </p>
+              </div>
+              <button type="submit" disabled={createMutation.isPending || days.length === 0}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60 active:scale-95 transition-all"
                 style={{ background: 'rgb(var(--c-brand-600))' }}>
-                {createMutation.isPending ? 'Saving…' : 'Save Budget'}
+                {createMutation.isPending ? 'Saving…' : days.length === 0 ? 'Pick at least one day' : editing ? 'Save changes' : 'Save Budget'}
               </button>
             </form>
           </div>
@@ -162,7 +208,7 @@ export function BudgetTab() {
       ) : budgets.length === 0 ? (
         <div className="card py-10 text-center">
           <p className="text-sm text-gray-400">No budgets yet</p>
-          <button onClick={() => setShowForm(true)} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
+          <button onClick={() => openAdd()} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
             Create your first budget
           </button>
         </div>
@@ -173,6 +219,7 @@ export function BudgetTab() {
               key={b.id}
               budget={b}
               currency={currency}
+              onEdit={() => openEdit(b)}
               onDelete={() => confirmDelete === b.id ? deleteMutation.mutate(b.id) : setConfirmDelete(b.id)}
               deleteLabel={confirmDelete === b.id ? 'Confirm?' : undefined}
             />
@@ -199,9 +246,10 @@ function BudgetSummary({ budgets, currency }: { budgets: Budget[]; currency: str
   );
 }
 
-function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
+function BudgetCard({ budget: b, currency, onEdit, onDelete, deleteLabel }: {
   budget: Budget;
   currency: string;
+  onEdit: () => void;
   onDelete: () => void;
   deleteLabel?: string;
 }) {
@@ -211,8 +259,13 @@ function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
   const Icon = resolveIcon(b.category.icon);
   const color = b.category.color ?? '#6366F1';
   const barColor = pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#10B981';
-  const daysLeft = differenceInCalendarDays(parseISO(b.endDate.substring(0, 10)), new Date()) + 1;
-  const perDay = daysLeft > 0 && left > 0 ? left / daysLeft : 0;
+  const end = parseISO(b.endDate.substring(0, 10));
+  const daysLeft = differenceInCalendarDays(end, new Date()) + 1;
+  // Per-day allowance only over the days this money is actually spent (e.g. Mon–Fri)
+  const spendDays = b.activeWeekdays ?? [];
+  const spendDaysLeft = daysLeft > 0 ? countWeekdays(new Date(), end, spendDays) : 0;
+  const perDay = spendDaysLeft > 0 && left > 0 ? left / spendDaysLeft : 0;
+  const dayWord = spendDays.length ? `${weekdaysLabel(spendDays)} day` : 'day';
 
   return (
     <div className="card flex h-[124px] flex-col p-3.5">
@@ -225,9 +278,12 @@ function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
           <p className="flex items-center gap-1 truncate text-[11px] text-ink-muted">
             <CalendarDays size={11} />
             {format(parseISO(b.startDate.substring(0, 10)), 'd MMM')} – {format(parseISO(b.endDate.substring(0, 10)), 'd MMM')}
-            {daysLeft > 0 ? ` · ${daysLeft}d left` : ' · ended'}
+            {daysLeft > 0 ? (spendDays.length ? ` · ${spendDaysLeft} ${weekdaysLabel(spendDays)} days left` : ` · ${daysLeft}d left`) : ' · ended'}
           </p>
         </div>
+        <button onClick={onEdit} title="Edit budget" className="shrink-0 rounded-lg px-1.5 py-1 text-ink-muted/60 transition-colors hover:bg-gray-100 hover:text-ink">
+          <Pencil size={13} />
+        </button>
         <button
           onClick={onDelete}
           title="Delete budget"
@@ -255,7 +311,7 @@ function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
           {left < 0 ? (
             <><AlertTriangle size={11} /> Over by {formatCurrency(-left, currency)}</>
           ) : (
-            <>{formatCurrency(left, currency)} left{perDay > 0 && ` · about ${formatCurrency(Math.floor(perDay), currency)}/day`}</>
+            <>{formatCurrency(left, currency)} left{perDay > 0 && ` · about ${formatCurrency(Math.floor(perDay), currency)} per ${dayWord}`}</>
           )}
         </p>
       </div>

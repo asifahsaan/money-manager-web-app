@@ -282,6 +282,9 @@ model Budget {
   periodType PeriodType @default(MONTHLY)
   startDate  DateTime   @db.Date
   endDate    DateTime   @db.Date
+  // Days of the week this money is spent on (0 = Sunday … 6 = Saturday), used
+  // for the per-day allowance — e.g. transport Mon–Fri. Empty = every day.
+  activeWeekdays Int[]  @default([])
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
