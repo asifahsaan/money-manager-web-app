@@ -270,6 +270,8 @@ export interface Recurring {
   frequency: RecurringFrequency;
   /** WEEKLY only: 0 = Sunday … 6 = Saturday; empty = the start date's weekday */
   weekdays: number[];
+  /** "HH:MM", Pakistan time; null = no time */
+  time: string | null;
   startDate: string;
   nextOccurrence: string;
   endDate: string | null;

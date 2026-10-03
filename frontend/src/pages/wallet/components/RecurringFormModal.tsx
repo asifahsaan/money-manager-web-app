@@ -11,6 +11,12 @@ import { cn } from '@/lib/utils';
 import { WeekdayPicker } from '@/components/shared/WeekdayPicker';
 import type { Category, Recurring, RecurringFrequency, TransactionType, Wallet } from '@/types';
 
+/** "18:30" → "6:30 PM" */
+export function formatTime(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // Monday-first order for the chips (Pakistan's week)
 const CHIP_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -72,6 +78,7 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
   // Create: the first date. Edit: the next date it is due.
   const [date, setDate] = useState(editing ? editing.nextOccurrence.slice(0, 10) : today);
   const [endDate, setEndDate] = useState(editing?.endDate?.slice(0, 10) ?? '');
+  const [time, setTime] = useState(editing?.time ?? '');
   const [error, setError] = useState<string | null>(null);
 
 
@@ -86,6 +93,7 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
           frequency,
           weekdays,
           nextOccurrence: date,
+          time: time || null,
           endDate: endDate || (null as unknown as string),
           ...(type === 'TRANSFER'
             ? { fromWalletId: fromWalletId || null, toWalletId: toWalletId || null }
@@ -100,6 +108,7 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
         frequency,
         weekdays,
         startDate: date,
+        time: time || undefined,
         endDate: endDate || undefined,
         ...(type === 'TRANSFER'
           ? { fromWalletId: fromWalletId || undefined, toWalletId: toWalletId || undefined }
@@ -221,12 +230,23 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
 
           {/* Schedule */}
           <div className="rounded-xl border border-line p-3">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="col-span-2 sm:col-span-1">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
                 <label className={labelCls}>Repeats</label>
                 <select value={schedule} onChange={(e) => setSchedule(e.target.value as Schedule)} className={inputCls}>
                   {SCHEDULES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className={labelCls}>Time <span className="font-normal">(optional)</span></label>
+                <div className="relative">
+                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cn(inputCls, 'px-2')} />
+                  {time && (
+                    <button type="button" onClick={() => setTime('')} aria-label="Clear time" className="absolute right-9 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-muted hover:bg-gray-100 hover:text-ink">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="contents">
                 <div>
@@ -241,7 +261,7 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
             </div>
 
             <p className="mt-2 text-[11px] text-ink-muted">
-              Added to your transactions automatically on each date{date < today && !isEdit ? ' — dates before today are added right away' : ''}. Skipped a day? Just delete or edit that entry.
+              Added to your transactions automatically on each date{time ? ` at ${formatTime(time)}` : ''}{date < today && !isEdit ? ' — dates before today are added right away' : ''}. Skipped a day? Just delete or edit that entry.
             </p>
 
             {schedule === 'DAYS' && (

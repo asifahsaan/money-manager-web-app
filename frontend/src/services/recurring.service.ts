@@ -17,6 +17,7 @@ export const recurringService = {
     toWalletId?: number;
     frequency: RecurringFrequency;
     weekdays?: number[];
+    time?: string;
     startDate: string;
     endDate?: string;
   }) => apiClient.post<ApiResponse<Recurring>>('/recurrings', data).then((r) => r.data.data),
@@ -31,6 +32,7 @@ export const recurringService = {
     toWalletId: number | null;
     frequency: RecurringFrequency;
     weekdays: number[];
+    time: string | null;
     nextOccurrence: string;
     endDate: string;
     isActive: boolean;

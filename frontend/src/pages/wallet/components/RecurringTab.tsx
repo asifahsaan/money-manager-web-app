@@ -10,7 +10,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { TransactionType, RecurringFrequency, Recurring } from '@/types';
 import { addDays, startOfDay, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, getDaysInMonth, parseISO, startOfMonth } from 'date-fns';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
-import { RecurringFormModal, scheduleLabel } from './RecurringFormModal';
+import { RecurringFormModal, scheduleLabel, formatTime } from './RecurringFormModal';
 
 // How many times a frequency happens in an average month
 const PER_MONTH: Record<RecurringFrequency, number> = { DAILY: 30.4, WEEKLY: 52 / 12, MONTHLY: 1, YEARLY: 1 / 12, CUSTOM: 1 };
@@ -120,6 +120,7 @@ export function RecurringTab() {
                   <p className="truncate text-sm font-semibold text-ink">{r.description || r.category?.name || 'Recurring'}</p>
                   <p className="truncate text-[11px] text-ink-muted">
                     {scheduleLabel(r)}
+                    {r.time ? ` · ${formatTime(r.time)}` : ''}
                     {r.category?.name && r.description ? ` · ${r.category.name}` : ''}
                     {via ? ` · ${via}` : ''}
                   </p>
@@ -128,7 +129,7 @@ export function RecurringTab() {
                   <p className={cn('text-xs font-semibold', days < 0 ? 'text-expense' : days <= 3 ? 'text-orange-600' : 'text-ink')}>
                     {days < 0 ? `Overdue ${-days}d` : days === 0 ? 'Due today' : days === 1 ? 'Tomorrow' : `In ${days} days`}
                   </p>
-                  <p className="text-[11px] text-ink-muted">{format(new Date(r.nextOccurrence), 'd MMM yyyy')}</p>
+                  <p className="text-[11px] text-ink-muted">{format(new Date(r.nextOccurrence), 'd MMM yyyy')}{r.time ? `, ${formatTime(r.time)}` : ''}</p>
                 </div>
                 <p className={cn('w-28 shrink-0 text-right text-sm font-bold tabular-nums', tone)}>
                   {isIncome ? '+' : isTransfer ? '' : '−'}{formatCurrency(Number(r.amount), currency)}

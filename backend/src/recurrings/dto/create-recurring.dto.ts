@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsString, IsDateString, IsEnum, IsOptional, IsBoolean, Min, Max, MaxLength, IsArray, ArrayMaxSize } from 'class-validator';
+import { IsInt, IsNumber, IsString, IsDateString, IsEnum, IsOptional, IsBoolean, Min, Max, MaxLength, IsArray, ArrayMaxSize, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TransactionType, RecurringFrequency } from '@prisma/client';
 
@@ -13,6 +13,8 @@ export class CreateRecurringDto {
   @IsOptional() @IsInt() @Type(() => Number) fromWalletId?: number;
   @IsOptional() @IsInt() @Type(() => Number) toWalletId?: number;
   @IsEnum(RecurringFrequency) frequency: RecurringFrequency;
+  /** "HH:MM" (24h); null clears it */
+  @IsOptional() @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'time must be HH:MM' }) time?: string;
   /** WEEKLY only: 0 = Sunday … 6 = Saturday */
   @IsOptional() @IsArray() @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) weekdays?: number[];
   @IsDateString() startDate: string;

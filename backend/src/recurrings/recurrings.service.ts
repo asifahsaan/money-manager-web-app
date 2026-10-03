@@ -38,6 +38,7 @@ export class RecurringsService {
         toWalletId: dto.toWalletId ?? null,
         frequency: dto.frequency,
         weekdays,
+        time: dto.time ?? null,
         startDate,
         // e.g. started on a Sunday but repeats Mon/Tue/Fri → first due Monday
         nextOccurrence: this.alignToWeekdays(startDate, weekdays),
@@ -62,6 +63,7 @@ export class RecurringsService {
       where: { id: r.id },
       data: {
         ...(scheduleChanged && { weekdays }),
+        ...(dto.time !== undefined && { time: dto.time }),
         ...(nextOccurrence && { nextOccurrence }),
         ...(dto.walletId !== undefined && { walletId: dto.walletId }),
         ...(dto.fromWalletId !== undefined && { fromWalletId: dto.fromWalletId }),
@@ -95,6 +97,10 @@ export class RecurringsService {
   async processDue(accountId: number, userId: number) {
     await this.verifyOwnership(accountId, userId);
     const today = this.todayInPakistan();
+    const nowTime = this.timeInPakistan();
+    // Due = an earlier day, or today once its time (if any) has come
+    const isDue = (r: { nextOccurrence: Date; time: string | null }) =>
+      r.nextOccurrence < today || (r.nextOccurrence.getTime() === today.getTime() && (!r.time || r.time <= nowTime));
     const due = await this.prisma.recurring.findMany({
       where: { accountId, isActive: true, nextOccurrence: { lte: today } },
     });
@@ -103,7 +109,7 @@ export class RecurringsService {
     for (const item of due) {
       let r = item;
       // cap the catch-up so a forgotten daily item can't flood the account
-      for (let i = 0; i < 400 && r.nextOccurrence <= today; i++) {
+      for (let i = 0; i < 400 && isDue(r); i++) {
         if (r.endDate && r.nextOccurrence > r.endDate) {
           await this.prisma.recurring.update({ where: { id: r.id }, data: { isActive: false } });
           break;
@@ -136,7 +142,9 @@ export class RecurringsService {
         amount: r.amount,
         description: r.description ?? `Recurring: ${r.frequency}`,
         date: txDate,
-        datetime: txDate,
+        time: r.time,
+        // same convention as TransactionsService.buildDates: local wall time stored as UTC
+        datetime: new Date(`${txDate.toISOString().slice(0, 10)}T${r.time ?? '00:00'}:00Z`),
         categoryId: r.categoryId ?? null,
         walletId: r.walletId ?? null,
         fromWalletId: r.fromWalletId ?? null,
@@ -156,6 +164,11 @@ export class RecurringsService {
     }
 
     return { transaction, nextOccurrence };
+  }
+
+  /** Current time in Pakistan as "HH:MM". */
+  private timeInPakistan(): string {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
   }
 
   /** Today's date in Pakistan as a UTC-midnight Date, matching how @db.Date columns come back. */
