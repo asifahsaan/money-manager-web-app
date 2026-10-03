@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
 import { userService } from '@/services/user.service';
 import { accountService } from '@/services/account.service';
+import { CategoryManager } from './CategoryManager';
 
 const CURRENCIES = ['Rs.', '$', '€', '£', '₹', '¥', 'AED', 'SAR'];
 
@@ -227,6 +228,9 @@ export function SettingsPage() {
           ))}
         </select>
       </section>
+
+      {/* Categories */}
+      {activeAccount && <CategoryManager accountId={activeAccount.id} />}
 
       {/* Change Password */}
       <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
