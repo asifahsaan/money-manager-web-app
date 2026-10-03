@@ -7,9 +7,11 @@ interface Props {
   transaction: Transaction;
   currency: string;
   onClick: () => void;
+  /** Mask the amount (privacy mode) */
+  hideAmount?: boolean;
 }
 
-export function TransactionItem({ transaction: tx, currency, onClick }: Props) {
+export function TransactionItem({ transaction: tx, currency, onClick, hideAmount }: Props) {
   const isIncome = tx.type === 'INCOME';
   const isTransfer = tx.type === 'TRANSFER';
 
@@ -78,7 +80,7 @@ export function TransactionItem({ transaction: tx, currency, onClick }: Props) {
             isTransfer ? 'text-gray-500' : isIncome ? 'text-income' : 'text-expense',
           )}
         >
-          {amountDisplay}
+          {hideAmount ? '••••' : amountDisplay}
         </p>
         {tx.time && (
           <p className="text-[10px] text-gray-300 mt-0.5">{tx.time.substring(0, 5)}</p>

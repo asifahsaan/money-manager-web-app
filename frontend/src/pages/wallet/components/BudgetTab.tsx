@@ -4,13 +4,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, X } from 'lucide-react';
+import { X, Trash2, AlertTriangle, CalendarDays } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { budgetService } from '@/services/budget.service';
 import { categoryService } from '@/services/category.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Budget, PeriodType } from '@/types';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { resolveIcon } from '@/lib/category-icons';
+import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 
 const PERIODS: { value: PeriodType; label: string }[] = [
   { value: 'DAILY', label: 'Daily' },
@@ -91,18 +93,15 @@ export function BudgetTab() {
   if (!accountId) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Budgets</p>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
-        >
-          <Plus size={15} /> Add Budget
-        </button>
-      </div>
+    <div className="space-y-3">
+      <SectionBar
+        title="Budgets"
+        meta={budgets.length ? `${budgets.length} active · spending limits per category` : 'Set a spending limit per category'}
+      >
+        <AddButton label="Add budget" onClick={() => setShowForm(true)} />
+      </SectionBar>
+
+      {budgets.length > 0 && <BudgetSummary budgets={budgets} currency={currency} />}
 
       {/* Create modal */}
       {showForm && (
@@ -159,17 +158,17 @@ export function BudgetTab() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-[124px]" />)}</div>
       ) : budgets.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="card py-10 text-center">
           <p className="text-sm text-gray-400">No budgets yet</p>
           <button onClick={() => setShowForm(true)} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
             Create your first budget
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {budgets.map((b) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {[...budgets].sort((x, y) => y.percentage - x.percentage).map((b) => (
             <BudgetCard
               key={b.id}
               budget={b}
@@ -184,6 +183,22 @@ export function BudgetTab() {
   );
 }
 
+function BudgetSummary({ budgets, currency }: { budgets: Budget[]; currency: string }) {
+  const limit = budgets.reduce((t, b) => t + Number(b.amount), 0);
+  const spent = budgets.reduce((t, b) => t + b.spent, 0);
+  const over = budgets.filter((b) => b.percentage >= 100).length;
+  const near = budgets.filter((b) => b.percentage >= 80 && b.percentage < 100).length;
+  const pct = limit > 0 ? (spent / limit) * 100 : 0;
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatCard label="Total limit" value={formatCurrency(limit, currency)} sub={`${budgets.length} budget${budgets.length === 1 ? '' : 's'}`} />
+      <StatCard label="Spent" tone="expense" value={formatCurrency(spent, currency)} sub={`${pct.toFixed(2)}% of limit`} />
+      <StatCard label="Left to spend" tone={limit - spent >= 0 ? 'income' : 'expense'} value={formatCurrency(limit - spent, currency)} sub={limit - spent >= 0 ? 'Across all budgets' : 'Over the total limit'} />
+      <StatCard label="Needs attention" tone={over ? 'expense' : near ? 'warning' : 'neutral'} value={String(over + near)} sub={over ? `${over} over limit${near ? ` · ${near} near` : ''}` : near ? `${near} above 80%` : 'All within limit'} />
+    </div>
+  );
+}
+
 function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
   budget: Budget;
   currency: string;
@@ -191,42 +206,58 @@ function BudgetCard({ budget: b, currency, onDelete, deleteLabel }: {
   deleteLabel?: string;
 }) {
   const pct = b.percentage;
-  const left = Math.max(0, Number(b.amount) - b.spent);
+  const limit = Number(b.amount);
+  const left = limit - b.spent;
+  const Icon = resolveIcon(b.category.icon);
+  const color = b.category.color ?? '#6366F1';
+  const barColor = pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#10B981';
+  const daysLeft = differenceInCalendarDays(parseISO(b.endDate.substring(0, 10)), new Date()) + 1;
+  const perDay = daysLeft > 0 && left > 0 ? left / daysLeft : 0;
 
   return (
-    <div className="glass-card p-4">
-      <div className="flex items-center justify-between mb-0.5">
-        <p className="font-bold text-gray-800 text-sm">{b.category.name}</p>
-        <p className="text-sm font-bold text-gray-700">{formatCurrency(Number(b.amount), currency)}</p>
-      </div>
-      <p className="text-xs text-gray-400 mb-3">
-        Spent {formatCurrency(b.spent, currency)} • Left {formatCurrency(left, currency)}
-      </p>
-
-      {/* Progress bar */}
-      <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
-        <div
-          className="h-2 rounded-full transition-all"
-          style={{
-            width: `${Math.min(100, pct)}%`,
-            background: pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : 'rgb(var(--c-brand-600))',
-          }}
-        />
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] px-2 py-1 rounded-full border border-gray-100 bg-gray-50 text-gray-400">
-          {b.startDate.substring(0, 10)} — {b.endDate.substring(0, 10)}
+    <div className="card flex h-[124px] flex-col p-3.5">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: color }}>
+          <Icon size={15} color="white" />
         </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">{b.category.name}</p>
+          <p className="flex items-center gap-1 truncate text-[11px] text-ink-muted">
+            <CalendarDays size={11} />
+            {format(parseISO(b.startDate.substring(0, 10)), 'd MMM')} – {format(parseISO(b.endDate.substring(0, 10)), 'd MMM')}
+            {daysLeft > 0 ? ` · ${daysLeft}d left` : ' · ended'}
+          </p>
+        </div>
         <button
           onClick={onDelete}
+          title="Delete budget"
           className={cn(
-            'text-xs px-2.5 py-1 rounded-xl transition-colors font-medium',
-            deleteLabel ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50',
+            'shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors',
+            deleteLabel ? 'bg-red-500 text-white' : 'text-ink-muted/60 hover:bg-red-50 hover:text-red-500',
           )}
         >
-          {deleteLabel ?? 'Delete'}
+          {deleteLabel ?? <Trash2 size={13} />}
         </button>
+      </div>
+
+      <div className="mt-auto">
+        <div className="mb-1 flex items-baseline justify-between gap-2 text-xs tabular-nums">
+          <span className="text-ink">
+            <b className="font-bold">{formatCurrency(b.spent, currency)}</b>
+            <span className="text-ink-muted"> of {formatCurrency(limit, currency)}</span>
+          </span>
+          <span className="font-semibold" style={{ color: barColor }}>{pct.toFixed(2)}%</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, pct)}%`, background: barColor }} />
+        </div>
+        <p className={cn('mt-1 flex items-center gap-1 truncate text-[11px]', left < 0 ? 'font-semibold text-expense' : 'text-ink-muted')}>
+          {left < 0 ? (
+            <><AlertTriangle size={11} /> Over by {formatCurrency(-left, currency)}</>
+          ) : (
+            <>{formatCurrency(left, currency)} left{perDay > 0 && ` · about ${formatCurrency(Math.floor(perDay), currency)}/day`}</>
+          )}
+        </p>
       </div>
     </div>
   );

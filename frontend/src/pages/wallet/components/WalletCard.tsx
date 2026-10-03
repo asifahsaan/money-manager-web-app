@@ -20,27 +20,38 @@ export const TYPE_LABEL: Record<WalletType, string> = {
 };
 
 /** White tile with the brand's short mark, or the wallet-type icon. */
-export function WalletLogo({ theme, type, size = 40 }: { theme: WalletTheme; type: WalletType; size?: number }) {
+/**
+ * The brand's short mark (or the wallet-type icon) on a tile.
+ * "tile" = white tile for use on the coloured card; "solid" = brand-coloured
+ * tile with a white mark, for lists on a plain background.
+ */
+export function WalletLogo({ theme, type, size = 40, variant = 'tile' }: { theme: WalletTheme; type: WalletType; size?: number; variant?: 'tile' | 'solid' }) {
   const Icon = TYPE_ICON[type] ?? WalletIcon;
   const mark = theme.brand?.mark;
+  const solid = variant === 'solid';
+  const fg = solid ? '#ffffff' : theme.accent;
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-xl shadow-sm"
-      // fixed white: the palette's bg-white turns dark in dark mode
-      style={{ width: size, height: size, backgroundColor: '#ffffff' }}
+      className={cn('flex shrink-0 items-center justify-center shadow-sm', size >= 36 ? 'rounded-xl' : 'rounded-lg')}
+      // fixed colours: the palette's bg-white turns dark in dark mode
+      style={{ width: size, height: size, background: solid ? theme.background : '#ffffff' }}
     >
       {mark ? (
-        <span
-          className="font-black leading-none tracking-tight"
-          style={{ color: theme.accent, fontSize: mark.length > 2 ? size * 0.3 : size * 0.38 }}
-        >
+        <span className="font-black leading-none tracking-tight" style={{ color: fg, fontSize: mark.length > 2 ? size * 0.3 : size * 0.38 }}>
           {mark}
         </span>
       ) : (
-        <Icon size={size * 0.5} color={theme.accent} />
+        <Icon size={size * 0.5} color={fg} />
       )}
     </div>
   );
+}
+
+/** Second line under a wallet name: its bank (if the name doesn't already say it) or its type. */
+export function walletSubtitle(w: Pick<Wallet, 'name' | 'type' | 'icon' | 'color'>): string {
+  const brand = walletTheme(w).brand;
+  if (brand && !w.name.toLowerCase().includes(brand.name.toLowerCase().split(' ')[0])) return brand.name;
+  return TYPE_LABEL[w.type];
 }
 
 interface Props {
@@ -56,9 +67,7 @@ interface Props {
 export function WalletCard({ wallet: w, currency, hidden, onOpen, onToggleIncluded, onToggleHidden, onEdit }: Props) {
   const theme = walletTheme(w);
   const balance = Number(w.currentBalance);
-  const subtitle = theme.brand && theme.brand.name.toLowerCase() !== w.name.toLowerCase()
-    ? theme.brand.name
-    : TYPE_LABEL[w.type];
+  const subtitle = walletSubtitle(w);
 
   return (
     <div

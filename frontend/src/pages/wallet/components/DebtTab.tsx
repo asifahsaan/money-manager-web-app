@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { dueLabel, dueStatus } from '@/lib/debt-reminders';
 import { DebtReminderModal } from './DebtReminderModal';
 import { apiErrorMessage } from '@/lib/api-error';
+import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { DebtActivityLog, Pager } from './DebtActivityLog';
 import type { DebtActivityRow } from '@/services/debt.service';
 
@@ -254,18 +255,10 @@ export function DebtTab() {
 
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Debts & loans</p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
-        >
-          <Plus size={15} /> Add Debt
-        </button>
-      </div>
+    <div className="space-y-3">
+      <SectionBar title="Debts & loans" meta="Money you lent or borrowed, with reminders and full history">
+        <AddButton label="Add debt" onClick={() => setShowCreate(true)} />
+      </SectionBar>
 
       {/* ── Create modal ── */}
       {showCreate && (
@@ -652,14 +645,14 @@ function DebtSummary({ debts, currency, onPick }: { debts: Debt[]; currency: str
   const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
 
   const cards = [
-    { label: 'To receive', value: formatCurrency(sum(receive), currency), sub: receive.length ? people(receive.length) : 'No one owes you', tone: 'text-income', view: 'RECEIVABLE' as View },
-    { label: 'To pay', value: formatCurrency(sum(pay), currency), sub: pay.length ? people(pay.length) : 'You owe nothing', tone: 'text-expense', view: 'PAYABLE' as View },
-    { label: 'Net position', value: `${net >= 0 ? '+' : '−'} ${formatCurrency(Math.abs(net), currency)}`, sub: net > 0 ? 'In your favour' : net < 0 ? 'You owe more' : 'All square', tone: net >= 0 ? 'text-income' : 'text-expense', view: 'all' as View },
+    { label: 'To receive', value: formatCurrency(sum(receive), currency), sub: receive.length ? people(receive.length) : 'No one owes you', tone: 'income' as const, view: 'RECEIVABLE' as View },
+    { label: 'To pay', value: formatCurrency(sum(pay), currency), sub: pay.length ? people(pay.length) : 'You owe nothing', tone: 'expense' as const, view: 'PAYABLE' as View },
+    { label: 'Net position', value: `${net >= 0 ? '+' : '−'} ${formatCurrency(Math.abs(net), currency)}`, sub: net > 0 ? 'In your favour' : net < 0 ? 'You owe more' : 'All square', tone: net >= 0 ? ('income' as const) : ('expense' as const), view: 'all' as View },
     {
       label: 'Due soon / overdue',
       value: String(urgent.length),
       sub: urgent.length ? (overdue ? `${overdue} overdue` : urgent.slice(0, 2).map((d) => d.personName).join(', ')) : 'Nothing due this week',
-      tone: overdue ? 'text-expense' : urgent.length ? 'text-orange-600' : 'text-ink',
+      tone: overdue ? ('expense' as const) : urgent.length ? ('warning' as const) : ('neutral' as const),
       view: 'all' as View,
     },
   ];
@@ -667,11 +660,7 @@ function DebtSummary({ debts, currency, onPick }: { debts: Debt[]; currency: str
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {cards.map((c) => (
-        <button key={c.label} onClick={() => onPick(c.view)} className="stat-card text-left transition-colors hover:border-primary-200">
-          <p className="text-[11px] font-medium text-ink-muted">{c.label}</p>
-          <p className={cn('mt-0.5 text-lg font-black tabular-nums', c.tone)}>{c.value}</p>
-          <p className="mt-0.5 truncate text-[11px] text-ink-muted">{c.sub}</p>
-        </button>
+        <StatCard key={c.label} label={c.label} value={c.value} sub={c.sub} tone={c.tone} onClick={() => onPick(c.view)} />
       ))}
     </div>
   );

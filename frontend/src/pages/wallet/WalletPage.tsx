@@ -8,17 +8,21 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
   LucideIcon,
-  Plus,
   Trash2,
   X,
   Wallet as WalletIcon,
   CreditCard,
   Banknote,
   Smartphone,
-  Eye,
-  EyeOff,
   Palette,
   Sparkles,
+  PiggyBank,
+  Target,
+  HandCoins,
+  Repeat,
+  Scale,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAccountStore } from '@/stores/account.store';
@@ -32,6 +36,23 @@ import { DebtTab } from './components/DebtTab';
 import { RecurringTab } from './components/RecurringTab';
 import { WalletCard, WalletLogo } from './components/WalletCard';
 import { WALLET_BRANDS, detectBrand, walletTheme } from '@/lib/wallet-brands';
+import { usePrivacy } from '@/lib/use-privacy';
+import { StatCard, HideAllButton, SectionBar, AddButton } from '@/components/shared/StatCard';
+import { budgetService } from '@/services/budget.service';
+import { goalService } from '@/services/goal.service';
+import { debtService } from '@/services/debt.service';
+import { recurringService } from '@/services/recurring.service';
+import { dueStatus } from '@/lib/debt-reminders';
+
+type Tab = 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring';
+const TABS: { key: Tab; label: string; Icon: LucideIcon }[] = [
+  { key: 'wallets', label: 'Wallets', Icon: WalletIcon },
+  { key: 'budget', label: 'Budgets', Icon: PiggyBank },
+  { key: 'goals', label: 'Goals', Icon: Target },
+  { key: 'debt', label: 'Debts', Icon: HandCoins },
+  { key: 'recurring', label: 'Recurring', Icon: Repeat },
+];
+const STAT_KEYS = ['balance', 'income', 'expense', 'net'] as const;
 
 const WALLET_TYPES: { value: WalletType; label: string; Icon: LucideIcon }[] = [
   { value: 'CASH', label: 'Cash', Icon: Banknote },
@@ -64,55 +85,12 @@ export function WalletPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialTab = new URLSearchParams(location.search).get('tab');
-  const [activeTab, setActiveTab] = useState<'wallets' | 'budget' | 'goals' | 'debt' | 'recurring'>(
-    (initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring') ?? 'wallets'
+  const [activeTab, setActiveTab] = useState<Tab>(
+    (TABS.some((t) => t.key === initialTab) ? initialTab : 'wallets') as Tab,
   );
   useEffect(() => {
-    if (initialTab) setActiveTab(initialTab as 'wallets' | 'budget' | 'goals' | 'debt' | 'recurring');
+    if (initialTab && TABS.some((t) => t.key === initialTab)) setActiveTab(initialTab as Tab);
   }, [initialTab]);
-  const [allStatsHidden, setAllStatsHidden] = useState(() => localStorage.getItem('mm_wp_stats_all') === 'true');
-  const [hiddenStats, setHiddenStats] = useState<Set<string>>(() => {
-    try { return new Set<string>(JSON.parse(localStorage.getItem('mm_wp_stats') ?? '[]')); } catch { return new Set(); }
-  });
-  const [allWalletsHidden, setAllWalletsHidden] = useState(() => localStorage.getItem('mm_wp_wallets_all') === 'true');
-  const [hiddenWalletIds, setHiddenWalletIds] = useState<Set<number>>(() => {
-    try { return new Set<number>(JSON.parse(localStorage.getItem('mm_wp_wallets') ?? '[]')); } catch { return new Set(); }
-  });
-
-  function toggleStat(key: string) {
-    setHiddenStats((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      localStorage.setItem('mm_wp_stats', JSON.stringify([...next]));
-      return next;
-    });
-  }
-  function isStatHidden(key: string) { return allStatsHidden || hiddenStats.has(key); }
-  function toggleAllStats() {
-    setAllStatsHidden((h) => {
-      localStorage.setItem('mm_wp_stats_all', String(!h));
-      return !h;
-    });
-    setHiddenStats(new Set());
-    localStorage.setItem('mm_wp_stats', '[]');
-  }
-  function toggleAllWallets() {
-    setAllWalletsHidden((h) => {
-      localStorage.setItem('mm_wp_wallets_all', String(!h));
-      return !h;
-    });
-    setHiddenWalletIds(new Set());
-    localStorage.setItem('mm_wp_wallets', '[]');
-  }
-  function toggleWallet(id: number) {
-    setHiddenWalletIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      localStorage.setItem('mm_wp_wallets', JSON.stringify([...next]));
-      return next;
-    });
-  }
-  function isWalletHidden(id: number) { return allWalletsHidden || hiddenWalletIds.has(id); }
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -128,6 +106,23 @@ export function WalletPage() {
     queryFn: () => walletService.list(accountId!),
     enabled: !!accountId,
   });
+
+  const stats = usePrivacy('mm_wp_stats_v2', STAT_KEYS);
+  const walletPrivacy = usePrivacy('mm_wp_wallets_v2', wallets.map((w) => String(w.id)));
+
+  // Counts for the tab bar (same query keys as the tabs, so they share the cache)
+  const { data: budgets = [] } = useQuery({ queryKey: ['budgets', accountId], queryFn: () => budgetService.getAll(accountId!), enabled: !!accountId });
+  const { data: goals = [] } = useQuery({ queryKey: ['goals', accountId], queryFn: () => goalService.getAll(accountId!), enabled: !!accountId });
+  const { data: debts = [] } = useQuery({ queryKey: ['debts', accountId], queryFn: () => debtService.getAll(accountId!), enabled: !!accountId });
+  const { data: recurrings = [] } = useQuery({ queryKey: ['recurrings', accountId], queryFn: () => recurringService.getAll(accountId!), enabled: !!accountId });
+  const openDebts = debts.filter((d) => d.status !== 'CLOSED');
+  const tabBadge: Record<Tab, { n: number; alert?: boolean }> = {
+    wallets: { n: wallets.length },
+    budget: { n: budgets.length, alert: budgets.some((b) => b.percentage >= 100) },
+    goals: { n: goals.length },
+    debt: { n: openDebts.length, alert: openDebts.some((d) => ['overdue', 'today'].includes(dueStatus(d).kind)) },
+    recurring: { n: recurrings.length },
+  };
 
   const { data: monthStats } = useQuery({
     queryKey: ['wallet-stats', accountId, startDate, endDate],
@@ -253,91 +248,65 @@ export function WalletPage() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Summary stat cards */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Summary</p>
-          <button
-            onClick={toggleAllStats}
-            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            {allStatsHidden ? <EyeOff size={14} /> : <Eye size={14} />}
-            <span>{allStatsHidden ? 'Show all' : 'Hide all'}</span>
-          </button>
+      {/* Summary */}
+      <div className="px-4 pt-3 pb-3">
+        <div className="mb-1.5 flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-muted">{format(today, 'MMMM yyyy')}</p>
+          <HideAllButton allHidden={stats.allHidden} onClick={stats.toggleAll} />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="stat-card flex items-start justify-between">
-            <div>
-              <p className="text-[11px] text-gray-400 font-medium mb-1">Total Balance</p>
-              <p className={cn('text-lg font-black', totalBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
-                {isStatHidden('balance') ? '••••' : formatCurrency(totalBalance, currency)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-1">Included wallets only</p>
-            </div>
-            <button onClick={() => toggleStat('balance')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
-              {isStatHidden('balance') ? <EyeOff size={13} /> : <Eye size={13} />}
-            </button>
-          </div>
-          <div className="stat-card flex items-start justify-between">
-            <div>
-              <p className="text-[11px] text-gray-400 font-medium mb-1">Income This Month</p>
-              <p className="text-lg font-black text-income">
-                {isStatHidden('income') ? '••••' : formatCurrency(monthIncome, currency)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-1">Transfers excluded</p>
-            </div>
-            <button onClick={() => toggleStat('income')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
-              {isStatHidden('income') ? <EyeOff size={13} /> : <Eye size={13} />}
-            </button>
-          </div>
-          <div className="stat-card flex items-start justify-between">
-            <div>
-              <p className="text-[11px] text-gray-400 font-medium mb-1">Expense This Month</p>
-              <p className="text-lg font-black text-expense">
-                {isStatHidden('expense') ? '••••' : formatCurrency(monthExpense, currency)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-1">Budgets use expenses only</p>
-            </div>
-            <button onClick={() => toggleStat('expense')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
-              {isStatHidden('expense') ? <EyeOff size={13} /> : <Eye size={13} />}
-            </button>
-          </div>
-          <div className="stat-card flex items-start justify-between">
-            <div>
-              <p className="text-[11px] text-gray-400 font-medium mb-1">Net Total</p>
-              <p className={cn('text-lg font-black', netTotal >= 0 ? 'text-success' : 'text-expense')}>
-                {isStatHidden('net') ? '••••' : formatCurrency(netTotal, currency)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-1">Income minus expense</p>
-            </div>
-            <button onClick={() => toggleStat('net')} className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
-              {isStatHidden('net') ? <EyeOff size={13} /> : <Eye size={13} />}
-            </button>
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Total balance" icon={Scale} tone={totalBalance >= 0 ? 'neutral' : 'expense'}
+            value={formatCurrency(totalBalance, currency)} sub="Included wallets only"
+            hidden={stats.isHidden('balance')} onToggleHidden={() => stats.toggle('balance')} />
+          <StatCard label="Income this month" icon={TrendingUp} tone="income"
+            value={formatCurrency(monthIncome, currency)} sub="Transfers excluded"
+            hidden={stats.isHidden('income')} onToggleHidden={() => stats.toggle('income')} />
+          <StatCard label="Expense this month" icon={TrendingDown} tone="expense"
+            value={formatCurrency(monthExpense, currency)} sub="What budgets count"
+            hidden={stats.isHidden('expense')} onToggleHidden={() => stats.toggle('expense')} />
+          <StatCard label="Net this month" icon={PiggyBank} tone={netTotal >= 0 ? 'income' : 'expense'}
+            value={formatCurrency(netTotal, currency)} sub="Income minus expense"
+            hidden={stats.isHidden('net')} onToggleHidden={() => stats.toggle('net')} />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex overflow-x-auto glass-panel border-b border-white/50 shrink-0 px-2 pt-2 gap-1">
-        {(['wallets', 'budget', 'goals', 'debt', 'recurring'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              'px-4 py-2 text-xs font-medium whitespace-nowrap transition-all rounded-xl mb-1.5 capitalize',
-              activeTab === tab
-                ? 'bg-amber-50 text-amber-800 font-bold'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/60',
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="sticky top-0 z-10 shrink-0 border-y border-line bg-surface/95 px-2 backdrop-blur">
+        <div className="flex gap-1 overflow-x-auto" role="tablist">
+          {TABS.map(({ key, label, Icon }) => {
+            const active = activeTab === key;
+            const badge = tabBadge[key];
+            return (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveTab(key)}
+                className={cn(
+                  'relative flex shrink-0 items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors',
+                  active ? 'text-primary-700' : 'text-ink-muted hover:text-ink',
+                )}
+              >
+                <Icon size={15} />
+                {label}
+                {badge.n > 0 && (
+                  <span className={cn(
+                    'rounded-full px-1.5 text-[10px] font-semibold leading-4',
+                    badge.alert ? 'bg-expense text-white' : active ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-ink-muted',
+                  )}>
+                    {badge.n}
+                  </span>
+                )}
+                {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Sub-tab content */}
       {activeTab !== 'wallets' && (
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 px-4 py-3">
           {activeTab === 'budget' && <BudgetTab />}
           {activeTab === 'goals' && <GoalsTab />}
           {activeTab === 'debt' && <DebtTab />}
@@ -347,33 +316,15 @@ export function WalletPage() {
 
       {/* Wallet grid */}
       {activeTab === 'wallets' && (
-        <div className="flex-1 overflow-y-auto px-4 pb-6">
-          {/* Tab header */}
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-gray-400 font-medium">
-                {wallets.filter((w) => w.includedInTotal && !w.archived).length} wallets included
-                {' · '}transfers excluded from profit/loss
-              </p>
-              <button
-                onClick={toggleAllWallets}
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
-                title={allWalletsHidden ? 'Show balances' : 'Hide balances'}
-              >
-                {allWalletsHidden ? <EyeOff size={13} /> : <Eye size={13} />}
-              </button>
-            </div>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-              style={{
-                background: 'rgb(var(--c-brand-600))',
-                color: '#ffffff',
-                boxShadow: '0 8px 20px rgba(79,70,229,0.25)',
-              }}
+        <div className="flex-1 px-4 pb-6">
+          <div className="py-3">
+            <SectionBar
+              title="Your wallets"
+              meta={`${wallets.filter((w) => w.includedInTotal && !w.archived).length} of ${wallets.length} counted in total · transfers don't change profit/loss`}
             >
-              <Plus size={15} /> Add Wallet
-            </button>
+              <HideAllButton allHidden={walletPrivacy.allHidden} onClick={walletPrivacy.toggleAll} />
+              <AddButton label="Add wallet" onClick={openAdd} />
+            </SectionBar>
           </div>
 
           {isLoading ? (
@@ -390,10 +341,10 @@ export function WalletPage() {
                   key={w.id}
                   wallet={w}
                   currency={currency}
-                  hidden={isWalletHidden(w.id)}
+                  hidden={walletPrivacy.isHidden(String(w.id))}
                   onOpen={() => navigate(`/wallet/${w.id}`)}
                   onToggleIncluded={() => toggleMutation.mutate(w)}
-                  onToggleHidden={() => toggleWallet(w.id)}
+                  onToggleHidden={() => walletPrivacy.toggle(String(w.id))}
                   onEdit={(e) => openEdit(w, e)}
                 />
               ))}

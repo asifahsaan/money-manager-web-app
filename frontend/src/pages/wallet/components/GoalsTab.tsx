@@ -4,13 +4,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Trash2, X, Plus, Minus, Target, CheckCircle2 } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { goalService } from '@/services/goal.service';
 import { walletService } from '@/services/wallet.service';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Goal } from '@/types';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, differenceInCalendarMonths, format } from 'date-fns';
+import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -120,18 +121,12 @@ export function GoalsTab() {
   if (!accountId) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Saving Goals</p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
-        >
-          <Plus size={15} /> Add Goal
-        </button>
-      </div>
+    <div className="space-y-3">
+      <SectionBar title="Saving goals" meta={goals.length ? `${goals.length} goal${goals.length === 1 ? '' : 's'} · money set aside for something specific` : 'Set aside money for something specific'}>
+        <AddButton label="Add goal" onClick={() => setShowCreate(true)} />
+      </SectionBar>
+
+      {goals.length > 0 && <GoalsSummary goals={goals} currency={currency} />}
 
       {/* Create modal */}
       {showCreate && (
@@ -239,79 +234,101 @@ export function GoalsTab() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-[136px]" />)}</div>
       ) : goals.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="card py-10 text-center">
           <p className="text-sm text-gray-400">No goals yet</p>
           <button onClick={() => setShowCreate(true)} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
             Create your first goal
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {goals.map((g) => {
             const target = Number(g.targetAmount);
             const saved = Number(g.savedAmount);
             const pct = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
             const color = g.color ?? '#10B981';
+            const done = saved >= target && target > 0;
+            const days = differenceInCalendarDays(new Date(g.goalDate), new Date());
+            const months = Math.max(1, differenceInCalendarMonths(new Date(g.goalDate), new Date()));
+            const perMonth = !done && days > 0 ? (target - saved) / months : 0;
             return (
-              <div key={g.id} className="glass-card p-4">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: color, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.1)' }}
-                    >
-                      <Target size={16} color="white" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800">{g.name}</p>
-                      <p className="text-[10px] text-gray-400">By {format(new Date(g.goalDate), 'MMM d, yyyy')}</p>
-                    </div>
+              <div key={g.id} className="card flex h-[136px] flex-col p-3.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: color }}>
+                    {done ? <CheckCircle2 size={15} color="white" /> : <Target size={15} color="white" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink" title={g.name}>{g.name}</p>
+                    <p className={cn('truncate text-[11px]', !done && days < 0 ? 'font-semibold text-expense' : 'text-ink-muted')}>
+                      By {format(new Date(g.goalDate), 'd MMM yyyy')}
+                      {done ? ' · reached' : days < 0 ? ` · ${-days}d late` : ` · ${days}d left`}
+                    </p>
                   </div>
-                  <span className="text-base font-black" style={{ color }}>{pct.toFixed(0)}%</span>
+                  <span className="text-sm font-black tabular-nums" style={{ color }}>{pct.toFixed(0)}%</span>
                 </div>
 
-                <p className="text-xs text-gray-400 mb-2.5">
-                  Saved {formatCurrency(saved, currency)} of {formatCurrency(target, currency)}
-                </p>
-
-                {/* Progress bar */}
-                <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
-                  <div
-                    className="h-2 rounded-full transition-all"
-                    style={{ width: `${pct}%`, backgroundColor: color }}
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setSelectedGoal(g); setEntryType('deposit'); resetEntry(); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-white active:scale-95 transition-all"
-                    style={{ background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' }}
-                  >
-                    <TrendingUp size={12} /> Deposit
-                  </button>
-                  <button
-                    onClick={() => { setSelectedGoal(g); setEntryType('withdraw'); resetEntry(); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-                  >
-                    <TrendingDown size={12} /> Withdraw
-                  </button>
-                  <button
-                    onClick={() => confirmDelete === g.id ? deleteMutation.mutate(g.id) : setConfirmDelete(g.id)}
-                    className="p-2 rounded-xl text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div className="mt-auto">
+                  <div className="mb-1 flex items-baseline justify-between gap-2 text-xs tabular-nums">
+                    <span className="text-ink">
+                      <b className="font-bold">{formatCurrency(saved, currency)}</b>
+                      <span className="text-ink-muted"> of {formatCurrency(target, currency)}</span>
+                    </span>
+                    {perMonth > 0 && <span className="truncate text-[11px] text-ink-muted">{formatCurrency(Math.ceil(perMonth), currency)}/mo</span>}
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                  </div>
+                  <div className="mt-2 flex gap-1.5">
+                    <button
+                      onClick={() => { setSelectedGoal(g); setEntryType('deposit'); resetEntry(); }}
+                      className="flex h-7 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-semibold text-white transition-all active:scale-95"
+                      style={{ background: 'rgb(var(--c-brand-600))' }}
+                    >
+                      <Plus size={12} /> Deposit
+                    </button>
+                    <button
+                      onClick={() => { setSelectedGoal(g); setEntryType('withdraw'); resetEntry(); }}
+                      disabled={saved <= 0}
+                      className="flex h-7 flex-1 items-center justify-center gap-1 rounded-lg border border-line text-xs font-semibold text-ink-muted transition-colors hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      <Minus size={12} /> Withdraw
+                    </button>
+                    <button
+                      onClick={() => confirmDelete === g.id ? deleteMutation.mutate(g.id) : setConfirmDelete(g.id)}
+                      title={confirmDelete === g.id ? 'Tap again to delete' : 'Delete goal'}
+                      className={cn(
+                        'flex h-7 items-center rounded-lg px-2 text-xs transition-colors',
+                        confirmDelete === g.id ? 'bg-red-500 font-semibold text-white' : 'text-ink-muted/60 hover:bg-red-50 hover:text-red-500',
+                      )}
+                    >
+                      {confirmDelete === g.id ? 'Delete?' : <Trash2 size={13} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function GoalsSummary({ goals, currency }: { goals: Goal[]; currency: string }) {
+  const target = goals.reduce((t, g) => t + Number(g.targetAmount), 0);
+  const saved = goals.reduce((t, g) => t + Number(g.savedAmount), 0);
+  const reached = goals.filter((g) => Number(g.savedAmount) >= Number(g.targetAmount)).length;
+  const next = goals
+    .filter((g) => Number(g.savedAmount) < Number(g.targetAmount))
+    .sort((a, b) => a.goalDate.localeCompare(b.goalDate))[0];
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatCard label="Saved so far" tone="income" value={formatCurrency(saved, currency)} sub={`${target > 0 ? ((saved / target) * 100).toFixed(2) : '0.00'}% of all targets`} />
+      <StatCard label="Still to save" value={formatCurrency(Math.max(0, target - saved), currency)} sub={`Targets total ${formatCurrency(target, currency)}`} />
+      <StatCard label="Goals reached" tone={reached ? 'income' : 'neutral'} value={`${reached} / ${goals.length}`} sub={reached === goals.length ? 'All done' : 'Keep going'} />
+      <StatCard label="Next deadline" tone="brand" value={next ? format(new Date(next.goalDate), 'd MMM yyyy') : '—'} sub={next ? next.name : 'Nothing pending'} />
     </div>
   );
 }

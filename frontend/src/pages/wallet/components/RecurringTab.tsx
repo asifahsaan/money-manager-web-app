@@ -4,15 +4,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Play, RefreshCw } from 'lucide-react';
+import { Trash2, X, Play, ArrowDownLeft, ArrowUpRight, ArrowLeftRight } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { recurringService } from '@/services/recurring.service';
 import { walletService } from '@/services/wallet.service';
 import { categoryService } from '@/services/category.service';
 // walletService kept for the create form wallet selector
 import { formatCurrency, cn } from '@/lib/utils';
-import { TransactionType, RecurringFrequency } from '@/types';
-import { format } from 'date-fns';
+import { TransactionType, RecurringFrequency, Recurring } from '@/types';
+import { differenceInCalendarDays, format } from 'date-fns';
+import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
+
+// How many times a frequency happens in an average month
+const PER_MONTH: Record<RecurringFrequency, number> = { DAILY: 30.4, WEEKLY: 52 / 12, MONTHLY: 1, YEARLY: 1 / 12, CUSTOM: 1 };
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -130,18 +134,12 @@ export function RecurringTab() {
   if (!accountId) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Recurring</p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all"
-          style={{ background: 'rgb(var(--c-brand-600))', color: '#ffffff', boxShadow: '0 8px 20px rgba(79,70,229,0.2)' }}
-        >
-          <Plus size={15} /> Add Recurring
-        </button>
-      </div>
+    <div className="space-y-3">
+      <SectionBar title="Recurring" meta={recurrings.length ? `${recurrings.length} repeating transaction${recurrings.length === 1 ? '' : 's'} · run them when they're due` : 'Bills, salary and subscriptions that repeat'}>
+        <AddButton label="Add recurring" onClick={() => setShowCreate(true)} />
+      </SectionBar>
+
+      {recurrings.length > 0 && <RecurringSummary items={recurrings} currency={currency} />}
 
       {/* Create modal */}
       {showCreate && (
@@ -249,79 +247,95 @@ export function RecurringTab() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+        <div className="card space-y-2 p-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-12" />)}</div>
       ) : recurrings.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="card py-10 text-center">
           <p className="text-sm text-gray-400">No recurring transactions</p>
           <button onClick={() => setShowCreate(true)} className="mt-2 text-sm text-amber-600 font-semibold hover:underline">
             Add your first one
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {recurrings.map((r) => {
-            const typeColor = r.transactionType === 'INCOME' ? 'text-income' : r.transactionType === 'EXPENSE' ? 'text-expense' : 'text-blue-500';
-            const iconBg = r.transactionType === 'INCOME' ? '#10B981' : r.transactionType === 'EXPENSE' ? '#EF4444' : '#3B82F6';
-            const cat = r.category;
-            const meta = cat?.name ?? null;
-
+        <ul className="card divide-y divide-gray-100">
+          {[...recurrings].sort((x, y) => x.nextOccurrence.localeCompare(y.nextOccurrence)).map((r) => {
+            const isIncome = r.transactionType === 'INCOME';
+            const isTransfer = r.transactionType === 'TRANSFER';
+            const tone = isIncome ? 'text-income' : isTransfer ? 'text-blue-600' : 'text-expense';
+            const Icon = isIncome ? ArrowDownLeft : isTransfer ? ArrowLeftRight : ArrowUpRight;
+            const days = differenceInCalendarDays(new Date(r.nextOccurrence), new Date());
+            const walletName = (id: number | null) => (id ? wallets.find((w) => w.id === id)?.name : undefined);
+            const via = isTransfer
+              ? [walletName(r.fromWalletId), walletName(r.toWalletId)].filter(Boolean).join(' → ')
+              : walletName(r.walletId);
             return (
-              <div key={r.id} className="glass-card p-4">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: cat?.color ?? iconBg, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.1)' }}
-                    >
-                      <RefreshCw size={15} color="white" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800">{r.description ?? r.frequency.toLowerCase()}</p>
-                      {meta && <p className="text-[10px] text-gray-400">{meta}</p>}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={cn('text-base font-black', typeColor)}>
-                      {formatCurrency(Number(r.amount), currency)}
-                    </p>
-                    <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
-                      {r.frequency.toLowerCase()}
-                    </span>
-                  </div>
+              <li key={r.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                <span
+                  className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', !r.category?.color && (isIncome ? 'bg-income-light' : isTransfer ? 'bg-blue-50' : 'bg-expense-light'))}
+                  style={r.category?.color ? { backgroundColor: r.category.color } : undefined}
+                >
+                  <Icon size={16} className={r.category?.color ? 'text-white' : tone} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{r.description || r.category?.name || 'Recurring'}</p>
+                  <p className="truncate text-[11px] text-ink-muted">
+                    <span className="capitalize">{r.frequency.toLowerCase()}</span>
+                    {r.category?.name && r.description ? ` · ${r.category.name}` : ''}
+                    {via ? ` · ${via}` : ''}
+                  </p>
                 </div>
-
-                {/* Footer */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 flex-1">
-                    Next: {format(new Date(r.nextOccurrence), 'MMM d, yyyy')}
-                  </span>
+                <div className="hidden w-28 shrink-0 text-right sm:block">
+                  <p className={cn('text-xs font-semibold', days < 0 ? 'text-expense' : days <= 3 ? 'text-orange-600' : 'text-ink')}>
+                    {days < 0 ? `Overdue ${-days}d` : days === 0 ? 'Due today' : days === 1 ? 'Tomorrow' : `In ${days} days`}
+                  </p>
+                  <p className="text-[11px] text-ink-muted">{format(new Date(r.nextOccurrence), 'd MMM yyyy')}</p>
+                </div>
+                <p className={cn('w-28 shrink-0 text-right text-sm font-bold tabular-nums', tone)}>
+                  {isIncome ? '+' : isTransfer ? '' : '−'}{formatCurrency(Number(r.amount), currency)}
+                </p>
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => confirmExecute === r.id ? executeMutation.mutate(r.id) : setConfirmExecute(r.id)}
+                    title="Add this transaction now"
                     className={cn(
-                      'flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all',
-                      confirmExecute === r.id ? 'bg-green-500 text-white' : 'text-white',
+                      'flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-all active:scale-95',
+                      confirmExecute === r.id ? 'bg-green-600 text-white' : 'border border-line text-ink-muted hover:bg-gray-50 hover:text-ink',
                     )}
-                    style={confirmExecute !== r.id ? { background: 'rgb(var(--c-brand-600))', boxShadow: '0 6px 16px rgba(79,70,229,0.2)' } : {}}
                   >
-                    <Play size={11} />
-                    {confirmExecute === r.id ? 'Confirm?' : 'Execute Now'}
+                    <Play size={11} /> {confirmExecute === r.id ? 'Confirm' : 'Run'}
                   </button>
                   <button
                     onClick={() => confirmDelete === r.id ? deleteMutation.mutate(r.id) : setConfirmDelete(r.id)}
+                    title={confirmDelete === r.id ? 'Tap again to delete' : 'Delete'}
                     className={cn(
-                      'p-1.5 rounded-xl text-xs transition-colors',
-                      confirmDelete === r.id ? 'bg-red-500 text-white' : 'text-gray-300 hover:text-red-500 hover:bg-red-50',
+                      'flex h-7 items-center rounded-lg px-1.5 text-xs transition-colors',
+                      confirmDelete === r.id ? 'bg-red-500 font-semibold text-white' : 'text-ink-muted/60 hover:bg-red-50 hover:text-red-500',
                     )}
                   >
-                    <Trash2 size={13} />
+                    {confirmDelete === r.id ? 'Delete?' : <Trash2 size={13} />}
                   </button>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
+    </div>
+  );
+}
+
+function RecurringSummary({ items, currency }: { items: Recurring[]; currency: string }) {
+  const monthly = (type: TransactionType) =>
+    items.filter((r) => r.transactionType === type).reduce((t, r) => t + Number(r.amount) * (PER_MONTH[r.frequency] ?? 1), 0);
+  const inflow = monthly('INCOME');
+  const outflow = monthly('EXPENSE');
+  const next = [...items].sort((a, b) => a.nextOccurrence.localeCompare(b.nextOccurrence))[0];
+  const dueNow = items.filter((r) => differenceInCalendarDays(new Date(r.nextOccurrence), new Date()) <= 0).length;
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatCard label="Monthly income" tone="income" value={formatCurrency(inflow, currency)} sub="Recurring, per month" />
+      <StatCard label="Monthly bills" tone="expense" value={formatCurrency(outflow, currency)} sub="Recurring, per month" />
+      <StatCard label="Due now" tone={dueNow ? 'warning' : 'neutral'} value={String(dueNow)} sub={dueNow ? 'Tap Run to add them' : 'Nothing waiting'} />
+      <StatCard label="Next up" tone="brand" value={next ? format(new Date(next.nextOccurrence), 'd MMM') : '—'} sub={next ? (next.description || next.category?.name || next.frequency.toLowerCase()) : ''} />
     </div>
   );
 }

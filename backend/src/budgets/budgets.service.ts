@@ -47,7 +47,8 @@ export class BudgetsService {
           ...b,
           spent,
           remaining: Math.max(0, budget - spent),
-          percentage: budget > 0 ? Math.min(100, (spent / budget) * 100) : 0,
+          // Not capped at 100 — "250%" tells the user how far over they are; bars clamp in the UI
+          percentage: budget > 0 ? (spent / budget) * 100 : 0,
         };
       }),
     );

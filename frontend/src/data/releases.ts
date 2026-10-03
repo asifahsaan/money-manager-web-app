@@ -15,6 +15,25 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.12.0',
+    date: '2026-10-03',
+    title: 'A tighter layout & a new calendar',
+    changes: [
+      { kind: 'new', text: 'Calendar redesigned — the selected day’s transactions sit beside the month, days you spent more are shaded darker, each week shows its total, and you can jump to any month or back to today.' },
+      { kind: 'new', text: 'Hide amounts on the Calendar too, including the amounts inside each day.' },
+      { kind: 'improved', text: 'After “Hide all”, tap the eye on any single card to show just that one — no need to reveal everything.' },
+      { kind: 'new', text: 'Budgets, Goals and Recurring each get a summary row — total limit and what’s left, how much you’ve saved, monthly bills and what’s due now.' },
+      { kind: 'improved', text: 'Budgets show how far over you are (e.g. 160%), days left and how much you can spend per day.' },
+      { kind: 'improved', text: 'Goals show days left and how much to save each month to reach them.' },
+      { kind: 'improved', text: 'Recurring is now a compact list sorted by what’s due next, with Run and Delete on each row.' },
+      { kind: 'improved', text: 'Tabs in Wallets & Plans show counts, and turn red when a budget is over or a debt is overdue.' },
+      { kind: 'improved', text: 'Cards that sit side by side are the same height; long lists scroll inside the card instead of stretching the page.' },
+      { kind: 'improved', text: 'Statistics: biggest expenses (top 10), the weekday you spend most on, and percentages to two decimals.' },
+      { kind: 'fixed', text: 'Statistics now shows the right opening and closing balance for past months.' },
+      { kind: 'improved', text: 'Wallet lists on Overview and Transactions use each bank’s colours and badge.' },
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-10-02',
     title: 'Bank-themed wallets & a better debt tracker',

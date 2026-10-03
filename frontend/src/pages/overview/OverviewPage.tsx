@@ -22,6 +22,8 @@ import { dueLabel, dueStatus, urgentDebts } from '@/lib/debt-reminders';
 import { DebtReminderModal } from '@/pages/wallet/components/DebtReminderModal';
 import { TransactionItem } from '@/pages/transactions/components/TransactionItem';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
+import { walletTheme } from '@/lib/wallet-brands';
+import { WalletLogo, walletSubtitle } from '@/pages/wallet/components/WalletCard';
 import { CategoryBreakdownModal } from './CategoryBreakdownModal';
 import type { Debt, Transaction } from '@/types';
 import { CategoryIcon } from '@/pages/transactions/components/CategoryIcon';
@@ -45,14 +47,18 @@ function compact(n: number) {
   return String(n);
 }
 
-function Section({ title, action, children, className }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+/**
+ * Card with a title row. `bodyHeight` fixes the content height on large screens
+ * so cards side by side stay level — anything longer scrolls inside the card.
+ */
+function Section({ title, action, children, className, bodyHeight }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string; bodyHeight?: string }) {
   return (
     <section className={cn('card flex flex-col', className)}>
-      <div className="flex items-center justify-between px-5 pb-2 pt-4">
+      <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         {action}
       </div>
-      <div className="flex-1 px-5 pb-5">{children}</div>
+      <div className={cn('min-h-0 flex-1 px-4 pb-4', bodyHeight && `${bodyHeight} overflow-y-auto`)}>{children}</div>
     </section>
   );
 }
@@ -267,7 +273,7 @@ export function OverviewPage() {
   const topCategories = showAllCats ? allCategories : allCategories.slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-4 lg:p-6">
+    <div className="mx-auto max-w-7xl space-y-4 p-4 lg:p-5">
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -276,17 +282,7 @@ export function OverviewPage() {
             {greeting()}, {user?.name.split(' ')[0] ?? 'there'}
           </h2>
         </div>
-        <button
-          onClick={() => openQuickAdd(true)}
-          className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 md:hidden"
-        >
-          <Plus size={16} strokeWidth={2.5} /> Add
-        </button>
-      </div>
-
-      {/* KPIs */}
-      <div>
-        <div className="mb-2 flex justify-end">
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleAll}
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-gray-100 hover:text-ink"
@@ -294,7 +290,17 @@ export function OverviewPage() {
             {allHidden ? <EyeOff size={14} /> : <Eye size={14} />}
             {allHidden ? 'Show all' : 'Hide all'}
           </button>
+          <button
+            onClick={() => openQuickAdd(true)}
+            className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 md:hidden"
+          >
+            <Plus size={16} strokeWidth={2.5} /> Add
+          </button>
         </div>
+      </div>
+
+      {/* KPIs */}
+      <div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <KpiCard
             title="Net worth"
@@ -392,7 +398,7 @@ export function OverviewPage() {
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
+      <div className="grid gap-3 lg:grid-cols-3 lg:gap-4">
         {/* Cash flow */}
         <Section
           title="Cash flow"
@@ -472,18 +478,16 @@ export function OverviewPage() {
         </Section>
 
         {/* Wallets */}
-        <Section title="Wallets" action={<ViewAll to="/wallet" />}>
+        <Section title="Wallets" action={<ViewAll to="/wallet" />} bodyHeight="lg:h-64">
           <ul className="divide-y divide-gray-100">
             {walletsLoading && [0, 1, 2].map((i) => <li key={i} className="py-3"><Skeleton className="h-9 w-full" /></li>)}
             {activeWallets.map((w) => (
               <li key={w.id}>
-                <Link to={`/wallet/${w.id}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-ink-muted">
-                    <WalletIcon size={16} />
-                  </div>
+                <Link to={`/wallet/${w.id}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-gray-50">
+                  <WalletLogo theme={walletTheme(w)} type={w.type} size={34} variant="solid" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{w.name}</p>
-                    <p className="text-xs capitalize text-ink-muted">{w.type.replace('_', ' ').toLowerCase()}</p>
+                    <p className="truncate text-xs text-ink-muted">{walletSubtitle(w)}</p>
                   </div>
                   <p className={cn('text-sm font-semibold tabular-nums', !hidden.has('networth') && Number(w.currentBalance) < 0 ? 'text-expense' : 'text-ink')}>
                     {hidden.has('networth') ? MASK : money(Number(w.currentBalance))}
@@ -495,7 +499,7 @@ export function OverviewPage() {
         </Section>
 
         {/* Recent transactions */}
-        <Section title="Recent transactions" className="lg:col-span-2" action={<ViewAll to="/transactions" />}>
+        <Section title="Recent transactions" className="lg:col-span-2" action={<ViewAll to="/transactions" />} bodyHeight="lg:h-[340px]">
           {recentLoading ? (
             <div className="space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : recent?.data.length ? (
@@ -510,7 +514,7 @@ export function OverviewPage() {
         </Section>
 
         {/* Where money went */}
-        <Section title="Top spending this month" action={<ViewAll to="/statistics" />}>
+        <Section title="Top spending this month" action={<ViewAll to="/statistics" />} bodyHeight="lg:h-[340px]">
           {topCategories.length ? (
             <ul className="space-y-1.5">
               {topCategories.map((c) => (
@@ -549,11 +553,11 @@ export function OverviewPage() {
         </Section>
 
         {/* Budgets */}
-        <Section title="Budgets" className="lg:col-span-2" action={<ViewAll to="/wallet?tab=budget" />}>
+        <Section title="Budgets" className="lg:col-span-2" action={<ViewAll to="/wallet?tab=budget" />} bodyHeight="lg:h-[210px]">
           {budgets?.length ? (
             <ul className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              {budgets.slice(0, 6).map((b) => {
-                const pct = Math.round(b.percentage);
+              {budgets.map((b) => {
+                const pct = Number(b.percentage.toFixed(2));
                 const tone = pct >= 100 ? 'bg-expense' : pct >= 80 ? 'bg-orange-500' : 'bg-income';
                 return (
                   <li key={b.id}>
@@ -579,10 +583,10 @@ export function OverviewPage() {
         </Section>
 
         {/* Goals */}
-        <Section title="Savings goals" action={<ViewAll to="/wallet?tab=goals" />}>
+        <Section title="Savings goals" action={<ViewAll to="/wallet?tab=goals" />} bodyHeight="lg:h-[210px]">
           {goals?.length ? (
-            <ul className="space-y-4">
-              {goals.slice(0, 3).map((g) => {
+            <ul className="space-y-3">
+              {goals.map((g) => {
                 const pct = Math.min(100, Math.round((Number(g.savedAmount) / Number(g.targetAmount)) * 100) || 0);
                 return (
                   <li key={g.id} className="flex items-center gap-3">

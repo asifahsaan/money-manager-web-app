@@ -8,12 +8,19 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Calendar, Landmark, Scale, ArrowLeftRight, PiggyBank } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { statisticsService, CategoryBreakdownItem, TransactionItem } from '@/services/statistics.service';
 import { walletService } from '@/services/wallet.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { resolveIcon } from '@/lib/category-icons';
+import { usePrivacy, MASK } from '@/lib/use-privacy';
+import { StatCard, HideAllButton } from '@/components/shared/StatCard';
+
+const STAT_KEYS = ['opening', 'closing', 'flow', 'net'] as const;
+// Fixed heights keep side-by-side cards level; long lists scroll inside.
+const PANEL_H = 'xl:h-[340px]';
+const ROW_H = 'lg:h-[300px]';
 
 type Period = 'monthly' | 'quarterly' | 'yearly' | 'custom';
 
@@ -100,6 +107,7 @@ export function StatisticsPage() {
   const [showDonutIncome, setShowDonutIncome] = useState(true);
 
   const { startDate, endDate, label, trendMonths } = getPeriodDates(period, ref, customStart, customEnd);
+  const privacy = usePrivacy('mm_stats_hidden', STAT_KEYS);
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['stats-summary', accountId, startDate, endDate],
@@ -126,8 +134,17 @@ export function StatisticsPage() {
   const income = summary?.totalIncome ?? 0;
   const expense = summary?.totalExpense ?? 0;
   const net = income - expense;
-  const endingBalance = totalWalletBalance;
-  const openingBalance = endingBalance - net;
+  // Balances are only stored for today, so walk back from today: everything
+  // earned/spent since the period started explains the gap to its opening.
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const { data: sinceStart } = useQuery({
+    queryKey: ['stats-summary', accountId, startDate, todayStr],
+    queryFn: () => statisticsService.getSummary(accountId!, startDate, todayStr),
+    enabled: !!accountId && !!startDate && startDate <= todayStr && endDate < todayStr,
+  });
+  const netSinceStart = endDate >= todayStr ? net : sinceStart ? sinceStart.totalIncome - sinceStart.totalExpense : net;
+  const openingBalance = totalWalletBalance - netSinceStart;
+  const endingBalance = openingBalance + net;
 
   const expenseBreakdown = summary?.expenseBreakdown ?? [];
   const incomeBreakdown = summary?.incomeBreakdown ?? [];
@@ -145,7 +162,7 @@ export function StatisticsPage() {
         categoryColor: cat.color,
       })))
       .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [summary, donutFilter]);
 
   const weeklyData = useMemo(() => {
@@ -190,8 +207,8 @@ export function StatisticsPage() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* ── Header ── */}
-      <div className="px-4 pt-4 pb-2 shrink-0">
-        <div className="flex items-center justify-between mb-3">
+      <div className="px-4 pt-3 pb-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           {/* Period tabs */}
           <div className="flex gap-1 bg-white/60 p-1 rounded-2xl border border-gray-100">
             {(['monthly', 'quarterly', 'yearly', 'custom'] as Period[]).map((p) => (
@@ -206,6 +223,8 @@ export function StatisticsPage() {
             ))}
           </div>
 
+          <div className="ml-auto flex items-center gap-2">
+          <HideAllButton allHidden={privacy.allHidden} onClick={privacy.toggleAll} />
           {/* Navigator */}
           {period !== 'custom' && (
             <div className="flex items-center gap-1">
@@ -221,6 +240,7 @@ export function StatisticsPage() {
               </button>
             </div>
           )}
+          </div>
         </div>
 
         {/* Custom date inputs */}
@@ -235,43 +255,25 @@ export function StatisticsPage() {
           </div>
         )}
 
-        {/* 4 stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="stat-card">
-            <p className="text-[10px] text-gray-400 font-medium mb-1">Opening Balance</p>
-            <p className={cn('text-base font-black', openingBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
-              {isLoading ? '…' : formatCurrency(openingBalance, currency)}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-1">Before {label}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-[10px] text-gray-400 font-medium mb-1">Remaining Balance</p>
-            <p className={cn('text-base font-black', endingBalance >= 0 ? 'text-gray-800' : 'text-expense')}>
-              {formatCurrency(endingBalance, currency)}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-1">After {label}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-[10px] text-gray-400 font-medium mb-1">Income / Expense</p>
-            <p className="text-base font-black">
-              <span className="text-income">{abbrev(income)}</span>
-              <span className="text-gray-300 mx-1">/</span>
-              <span className="text-expense">{abbrev(expense)}</span>
-            </p>
-            <p className="text-[10px] text-gray-400 mt-1">Transfers excluded</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-[10px] text-gray-400 font-medium mb-1">Net Total</p>
-            <p className={cn('text-base font-black', net >= 0 ? 'text-income' : 'text-expense')}>
-              {isLoading ? '…' : formatCurrency(net, currency)}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-1">Income minus expense</p>
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Opening balance" icon={Landmark} tone={openingBalance >= 0 ? 'neutral' : 'expense'} loading={isLoading}
+            value={formatCurrency(openingBalance, currency)} sub={`Before ${label}`}
+            hidden={privacy.isHidden('opening')} onToggleHidden={() => privacy.toggle('opening')} />
+          <StatCard label="Closing balance" icon={Scale} tone={endingBalance >= 0 ? 'neutral' : 'expense'} loading={isLoading}
+            value={formatCurrency(endingBalance, currency)} sub={endDate >= todayStr ? 'Included wallets, today' : `End of ${label}`}
+            hidden={privacy.isHidden('closing')} onToggleHidden={() => privacy.toggle('closing')} />
+          <StatCard label="Income / expense" icon={ArrowLeftRight} loading={isLoading}
+            value={<><span className="text-income">{abbrev(income)}</span><span className="mx-1 text-gray-300">/</span><span className="text-expense">{abbrev(expense)}</span></>}
+            sub="Transfers excluded"
+            hidden={privacy.isHidden('flow')} onToggleHidden={() => privacy.toggle('flow')} />
+          <StatCard label="Net" icon={PiggyBank} tone={net >= 0 ? 'income' : 'expense'} loading={isLoading}
+            value={formatCurrency(net, currency)} sub="Income minus expense"
+            hidden={privacy.isHidden('net')} onToggleHidden={() => privacy.toggle('net')} />
         </div>
       </div>
 
       {/* ── Expense Structure + Income Structure (50/50) ── */}
-      <div className="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 xl:items-start gap-4 shrink-0">
+      <div className="px-4 pb-3 grid grid-cols-1 xl:grid-cols-2 gap-3 shrink-0">
         <StructurePanel
           title="Expense Structure"
           type="expense"
@@ -283,7 +285,8 @@ export function StatisticsPage() {
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
           donutFilter={donutFilter}
           onDonutClick={(id, name, color, amount) => setDonutFilter((f) => f?.id === id ? null : { id, name, color, amount })}
-          chartSize={170}
+          chartSize={160}
+          hideAmounts={privacy.isHidden('flow')}
         />
         <StructurePanel
           title="Income Structure"
@@ -296,16 +299,17 @@ export function StatisticsPage() {
           onClickCat={(cat, color) => { setSelectedCat(cat); setSelectedCatColor(color); setModalTab('transactions'); setExpandedGroups(new Set()); }}
           donutFilter={incomeFilter}
           onDonutClick={(id, name, color, amount) => setIncomeFilter((f) => f?.id === id ? null : { id, name, color, amount })}
-          chartSize={170}
+          chartSize={160}
+          hideAmounts={privacy.isHidden('flow')}
         />
       </div>
 
       {/* ── Two-column: Top 5 Spending + Weekly Spending ── */}
-      <div className="px-4 pb-4 grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
-        {/* Top 5 Spending */}
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-gray-800">Top 5 Spending</p>
+      <div className="px-4 pb-3 grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
+        {/* Top Spending */}
+        <div className={cn('glass-card flex flex-col p-4', ROW_H)}>
+          <div className="flex items-center justify-between mb-2 shrink-0">
+            <p className="text-sm font-bold text-gray-800">Biggest expenses</p>
             {donutFilter && (
               <button
                 onClick={() => setDonutFilter(null)}
@@ -319,13 +323,14 @@ export function StatisticsPage() {
           {topSpending.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">No expense data</p>
           ) : (
-            <div className="space-y-2.5">
+            <div className="-mr-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-2">
               {topSpending.map((tx, i) => {
                 const Icon = resolveIcon(tx.categoryIcon);
                 const color = tx.categoryColor ?? DONUT_COLORS[i % DONUT_COLORS.length];
                 return (
-                  <div key={`${tx.id}-${i}`} className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  <div key={`${tx.id}-${i}`} className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-gray-50">
+                    <span className="w-4 shrink-0 text-center text-[10px] font-bold text-ink-muted">{i + 1}</span>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: color, boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.08)' }}>
                       <Icon size={14} color="white" />
                     </div>
@@ -339,8 +344,8 @@ export function StatisticsPage() {
                           : tx.categoryName} • {format(new Date(tx.date), 'MMM d')}
                       </p>
                     </div>
-                    <span className="text-sm font-black text-expense flex-shrink-0">
-                      -{formatCurrency(tx.amount, currency)}
+                    <span className="text-sm font-bold tabular-nums text-expense flex-shrink-0">
+                      {privacy.isHidden('flow') ? MASK : `-${formatCurrency(tx.amount, currency)}`}
                     </span>
                   </div>
                 );
@@ -350,30 +355,43 @@ export function StatisticsPage() {
         </div>
 
         {/* Weekly Spending */}
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-gray-800">
-              Weekly Spending{donutFilter ? ` — ${donutFilter.name} (${formatCurrency(donutFilter.amount, currency)})` : ''}
-            </p>
-            <span className="text-[10px] text-gray-400">Mon–Sun</span>
+        <div className={cn('glass-card flex flex-col p-4', ROW_H)}>
+          <div className="flex items-start justify-between gap-2 mb-2 shrink-0">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-gray-800">
+                Spending by weekday{donutFilter ? ` — ${donutFilter.name}` : ''}
+              </p>
+              {(() => {
+                const top = [...weeklyData].sort((a, b) => b.amount - a.amount)[0];
+                return top && top.amount > 0 ? (
+                  <p className="text-[11px] text-ink-muted">
+                    You spend most on <b className="text-ink">{top.day}</b>
+                    {privacy.isHidden('flow') ? '' : ` · ${formatCurrency(top.amount, currency)}`}
+                  </p>
+                ) : null;
+              })()}
+            </div>
+            <span className="text-[10px] text-gray-400 shrink-0">{label}</span>
           </div>
-          <ResponsiveContainer width="100%" height={130}>
+          <div className="min-h-[140px] flex-1">
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weeklyData} barSize={16}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip
                 contentStyle={{ borderRadius: 8, fontSize: 12, border: '1px solid #E5E7EB' }}
-                formatter={(v: number) => formatCurrency(v, currency)}
+                formatter={(v: number) => (privacy.isHidden('flow') ? MASK : formatCurrency(v, currency))}
               />
-              <Bar dataKey="amount" radius={[6, 6, 0, 0]} fill="#FCA5A5" name="Expense" />
+              <Bar dataKey="amount" radius={[6, 6, 0, 0]} fill="#F87171" name="Expense" maxBarSize={36} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
       {/* ── Income vs Expense Trend ── */}
-      <div className="px-4 pb-6 shrink-0">
+      <div className="px-4 pb-5 shrink-0">
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-bold text-gray-800">Income vs Expense Trend</h3>
@@ -575,8 +593,9 @@ export function StatisticsPage() {
 
 /* ─── Structure Panel (Expense or Income) ─── */
 function StructurePanel({
-  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat, donutFilter, onDonutClick, chartSize = 130,
+  title, type, breakdown, total, currency, showDonut, onToggleDonut, onClickCat, donutFilter, onDonutClick, chartSize = 130, hideAmounts,
 }: {
+  hideAmounts?: boolean;
   title: string;
   type: 'expense' | 'income';
   breakdown: CategoryBreakdownItem[];
@@ -599,9 +618,12 @@ function StructurePanel({
   const typeColor = type === 'expense' ? '#EF4444' : '#10B981';
 
   return (
-    <div className="glass-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-gray-800">{title}</p>
+    <div className={cn('glass-card flex flex-col p-4', PANEL_H)}>
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <p className="text-sm font-bold text-gray-800">
+          {title}
+          <span className="ml-1.5 text-xs font-medium text-ink-muted">{breakdown.length} categor{breakdown.length === 1 ? 'y' : 'ies'}</span>
+        </p>
         <button onClick={onToggleDonut}
           className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-700 transition-colors">
           {showDonut ? 'List view' : 'Donut view'}
@@ -609,9 +631,9 @@ function StructurePanel({
       </div>
 
       {breakdown.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">No data</p>
+        <p className="flex flex-1 items-center justify-center text-sm text-gray-400">No {type} in this period</p>
       ) : (
-        <div className={cn('gap-4', showDonut ? 'flex items-center' : 'block')}>
+        <div className={cn('min-h-0 flex-1 gap-4', showDonut ? 'flex flex-col items-center sm:flex-row' : 'flex')}>
           {/* Donut */}
           {showDonut && pieData.length > 0 && (
             <div className="relative flex-shrink-0" style={{ width: chartSize, height: chartSize }}>
@@ -637,14 +659,14 @@ function StructurePanel({
                   {donutFilter ? donutFilter.name : type}
                 </p>
                 <p className="text-sm font-black text-gray-800 leading-tight" style={{ color: donutFilter?.color ?? typeColor }}>
-                  {formatCurrency(donutFilter ? donutFilter.amount : total, currency)}
+                  {hideAmounts ? MASK : formatCurrency(donutFilter ? donutFilter.amount : total, currency)}
                 </p>
               </div>
             </div>
           )}
 
           {/* Category list */}
-          <div className="flex-1 min-w-0 space-y-1">
+          <div className="-mr-2 h-full min-h-0 w-full min-w-0 flex-1 space-y-0.5 overflow-y-auto pr-2 max-xl:max-h-[300px]">
             {breakdown.map((cat, i) => {
               const color = cat.color ?? DONUT_COLORS[i % DONUT_COLORS.length];
               const Icon = resolveIcon(cat.icon);
@@ -663,8 +685,8 @@ function StructurePanel({
                   <div className="text-left min-w-0">
                     <div className="grid grid-cols-[1fr_auto] items-baseline gap-2">
                       <span className="text-[11px] font-bold text-gray-800 truncate">{cat.name}</span>
-                      <span className="text-[10px] text-gray-400 whitespace-nowrap">
-                        {formatCurrency(cat.amount, currency)}
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap tabular-nums">
+                        {hideAmounts ? MASK : formatCurrency(cat.amount, currency)}
                       </span>
                     </div>
                     <div className="grid grid-cols-[1fr_auto] items-center gap-2 mt-0.5">
@@ -672,7 +694,7 @@ function StructurePanel({
                         <div className="h-full rounded-full" style={{ width: `${Math.min(cat.percentage, 100)}%`, backgroundColor: color }} />
                       </div>
                       <span className="text-[9px] text-gray-400 whitespace-nowrap">
-                        {cat.percentage.toFixed(0)}% · {cat.transactions.length} tx
+                        {cat.percentage.toFixed(2)}% · {cat.transactions.length} tx
                       </span>
                     </div>
                   </div>
