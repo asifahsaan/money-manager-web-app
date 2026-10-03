@@ -8,7 +8,7 @@ import { walletService } from '@/services/wallet.service';
 import { categoryService } from '@/services/category.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { TransactionType, RecurringFrequency, Recurring } from '@/types';
-import { differenceInCalendarDays, format } from 'date-fns';
+import { differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, getDaysInMonth, parseISO, startOfMonth } from 'date-fns';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { RecurringFormModal, scheduleLabel } from './RecurringFormModal';
 
@@ -172,16 +172,25 @@ export function RecurringTab() {
 }
 
 function RecurringSummary({ items, currency }: { items: Recurring[]; currency: string }) {
-  const monthly = (type: TransactionType) =>
+  // Count the real dates in this calendar month (October has 5 Thursdays, not "4.33")
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+  const thisMonth = (type: TransactionType) =>
+    items.filter((r) => r.transactionType === type).reduce((t, r) => t + Number(r.amount) * occurrencesIn(r, monthStart, monthEnd), 0);
+  // Long-run average, for the hint line
+  const average = (type: TransactionType) =>
     items.filter((r) => r.transactionType === type).reduce((t, r) => t + Number(r.amount) * timesPerMonth(r), 0);
-  const inflow = monthly('INCOME');
-  const outflow = monthly('EXPENSE');
+  const inflow = thisMonth('INCOME');
+  const outflow = thisMonth('EXPENSE');
+  const whole = (n: number) => formatCurrency(Math.round(n), currency);
+  const month = format(now, 'MMMM');
   const next = [...items].sort((a, b) => a.nextOccurrence.localeCompare(b.nextOccurrence))[0];
   const dueNow = items.filter((r) => differenceInCalendarDays(new Date(r.nextOccurrence), new Date()) <= 0).length;
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Monthly income" tone="income" value={formatCurrency(inflow, currency)} sub="Recurring, per month" />
-      <StatCard label="Monthly bills" tone="expense" value={formatCurrency(outflow, currency)} sub="Recurring, per month" />
+      <StatCard label={`Recurring income in ${month}`} tone="income" value={whole(inflow)} sub={`About ${whole(average('INCOME'))} in an average month`} />
+      <StatCard label={`Recurring bills in ${month}`} tone="expense" value={whole(outflow)} sub={`About ${whole(average('EXPENSE'))} in an average month`} />
       <StatCard label="Due now" tone={dueNow ? 'warning' : 'neutral'} value={String(dueNow)} sub={dueNow ? 'Tap Run to add them' : 'Nothing waiting'} />
       <StatCard label="Next up" tone="brand" value={next ? format(new Date(next.nextOccurrence), 'EEE d MMM') : '—'} sub={next ? (next.description || next.category?.name || scheduleLabel(next)) : ''} />
     </div>
@@ -191,4 +200,25 @@ function RecurringSummary({ items, currency }: { items: Recurring[]; currency: s
 function timesPerMonth(r: Recurring): number {
   if (r.frequency === 'WEEKLY' && r.weekdays?.length) return (r.weekdays.length * 52) / 12;
   return PER_MONTH[r.frequency] ?? 1;
+}
+
+/** How many times `r` falls between `from` and `to` (inclusive), within its start/end dates. */
+function occurrencesIn(r: Recurring, from: Date, to: Date): number {
+  const start = parseISO(r.startDate.slice(0, 10));
+  const end = r.endDate ? parseISO(r.endDate.slice(0, 10)) : null;
+  // Monthly/yearly repeat on the start date's day — or the month's last day if shorter (e.g. the 31st)
+  const sameDayOfMonth = (d: Date) => d.getDate() === Math.min(start.getDate(), getDaysInMonth(d));
+  const matches = (d: Date): boolean => {
+    switch (r.frequency) {
+      case 'DAILY':
+        return true;
+      case 'WEEKLY':
+        return r.weekdays?.length ? r.weekdays.includes(d.getDay()) : d.getDay() === start.getDay();
+      case 'YEARLY':
+        return d.getMonth() === start.getMonth() && sameDayOfMonth(d);
+      default:
+        return sameDayOfMonth(d);
+    }
+  };
+  return eachDayOfInterval({ start: from, end: to }).filter((d) => d >= start && (!end || d <= end) && matches(d)).length;
 }

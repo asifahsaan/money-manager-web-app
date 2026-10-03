@@ -23,6 +23,7 @@ export const RELEASES: Release[] = [
       { kind: 'new', text: 'Edit a recurring transaction — amount, wallet, category, schedule or the next due date.' },
       { kind: 'improved', text: 'Category fields are searchable — type a few letters to find it (recurring, budgets and the transaction filter).' },
       { kind: 'improved', text: 'A shorter recurring form that fits on one screen.' },
+      { kind: 'improved', text: 'Recurring totals count the real dates in this month (e.g. October has five Fridays) in whole rupees, with the long-run monthly average underneath.' },
       { kind: 'new', text: 'Settings → Categories: rename categories and sub-categories, pick a new icon and colour, add or delete them. Categories still on the plain tag icon are marked, and a parent’s icon can be copied to them in one go.' },
       { kind: 'new', text: 'Calendar redesigned — the selected day’s transactions sit beside the month, days you spent more are shaded darker, each week shows its total, and you can jump to any month or back to today.' },
       { kind: 'new', text: 'Hide amounts on the Calendar too, including the amounts inside each day.' },
