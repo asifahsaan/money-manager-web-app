@@ -33,8 +33,9 @@ export function useAutoRecurring(accountId: number | null | undefined) {
           toast.success(`Added ${created} recurring transaction${created === 1 ? '' : 's'}`);
           refreshAfterRecurring(qc);
         }
-      } catch {
-        /* offline or server waking up — the next visit will catch up */
+      } catch (err) {
+        // offline or server waking up — the next check catches up; log anything else
+        console.warn('Adding due recurring transactions failed', err);
       }
     };
     run();

@@ -42,7 +42,8 @@ export const recurringService = {
   /** Adds every occurrence that has come due; returns how many were added. */
   processDue: (accountId: number) =>
     apiClient
-      .post<ApiResponse<{ created: number }>>('/recurrings/process-due', null, { params: { accountId } })
+      // `{}` not `null`: a JSON body of "null" is rejected (400) by the server's parser
+      .post<ApiResponse<{ created: number }>>('/recurrings/process-due', {}, { params: { accountId } })
       .then((r) => r.data.data),
 
   execute: (id: number) =>
