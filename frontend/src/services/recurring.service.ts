@@ -16,11 +16,25 @@ export const recurringService = {
     fromWalletId?: number;
     toWalletId?: number;
     frequency: RecurringFrequency;
+    weekdays?: number[];
     startDate: string;
     endDate?: string;
   }) => apiClient.post<ApiResponse<Recurring>>('/recurrings', data).then((r) => r.data.data),
 
-  update: (id: number, data: Partial<{ amount: number; description: string; memo: string; categoryId: number; frequency: RecurringFrequency; endDate: string; isActive: boolean }>) =>
+  update: (id: number, data: Partial<{
+    amount: number;
+    description: string;
+    memo: string;
+    categoryId: number | null;
+    walletId: number | null;
+    fromWalletId: number | null;
+    toWalletId: number | null;
+    frequency: RecurringFrequency;
+    weekdays: number[];
+    nextOccurrence: string;
+    endDate: string;
+    isActive: boolean;
+  }>) =>
     apiClient.patch<ApiResponse<Recurring>>(`/recurrings/${id}`, data).then((r) => r.data.data),
 
   execute: (id: number) =>

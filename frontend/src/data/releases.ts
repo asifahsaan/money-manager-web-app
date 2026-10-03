@@ -19,6 +19,10 @@ export const RELEASES: Release[] = [
     date: '2026-10-03',
     title: 'A tighter layout & a new calendar',
     changes: [
+      { kind: 'new', text: 'Recurring on chosen weekdays — e.g. a rider every Mon, Tue and Fri, or office trips Mon–Fri only. Each Run moves it to the next chosen day.' },
+      { kind: 'new', text: 'Edit a recurring transaction — amount, wallet, category, schedule or the next due date.' },
+      { kind: 'improved', text: 'Category fields are searchable — type a few letters to find it (recurring, budgets and the transaction filter).' },
+      { kind: 'improved', text: 'A shorter recurring form that fits on one screen.' },
       { kind: 'new', text: 'Calendar redesigned — the selected day’s transactions sit beside the month, days you spent more are shaded darker, each week shows its total, and you can jump to any month or back to today.' },
       { kind: 'new', text: 'Hide amounts on the Calendar too, including the amounts inside each day.' },
       { kind: 'improved', text: 'After “Hide all”, tap the eye on any single card to show just that one — no need to reveal everything.' },

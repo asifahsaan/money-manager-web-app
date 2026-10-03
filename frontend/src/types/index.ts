@@ -266,6 +266,8 @@ export interface Recurring {
   fromWalletId: number | null;
   toWalletId: number | null;
   frequency: RecurringFrequency;
+  /** WEEKLY only: 0 = Sunday … 6 = Saturday; empty = the start date's weekday */
+  weekdays: number[];
   startDate: string;
   nextOccurrence: string;
   endDate: string | null;

@@ -16,6 +16,7 @@ import { TransactionModal } from './components/TransactionModal';
 import { usePrivacy } from '@/lib/use-privacy';
 import { StatCard, HideAllButton } from '@/components/shared/StatCard';
 import { walletTheme } from '@/lib/wallet-brands';
+import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
 import { WalletLogo, walletSubtitle } from '@/pages/wallet/components/WalletCard';
 
 const PRIVACY_KEYS = ['balance', 'income', 'expense', 'net', 'wallets'] as const;
@@ -297,16 +298,14 @@ export function TransactionsPage() {
               <option value="EXPENSE">Expense</option>
               <option value="TRANSFER">Transfer</option>
             </select>
-            <select
-              value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value)}
-              className="border border-gray-200 rounded-xl px-2 py-2 text-xs bg-white focus:outline-none focus:border-amber-400"
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <CategoryCombobox
+              compact
+              categories={categories}
+              type={filterType === 'INCOME' ? 'INCOME' : filterType === 'EXPENSE' ? 'EXPENSE' : undefined}
+              value={filterCategoryId ? Number(filterCategoryId) : ''}
+              onChange={(id) => setFilterCategoryId(id ? String(id) : '')}
+              emptyLabel="All categories"
+            />
             <select
               value={filterWalletId}
               onChange={(e) => setFilterWalletId(e.target.value)}

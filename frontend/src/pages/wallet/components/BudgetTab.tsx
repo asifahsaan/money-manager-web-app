@@ -13,6 +13,7 @@ import { Budget, PeriodType } from '@/types';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { resolveIcon } from '@/lib/category-icons';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
+import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
 
 const PERIODS: { value: PeriodType; label: string }[] = [
   { value: 'DAILY', label: 'Daily' },
@@ -53,11 +54,7 @@ export function BudgetTab() {
     enabled: !!accountId,
   });
 
-  const expenseCategories = categories
-    .filter((c) => c.type === 'EXPENSE')
-    .flatMap((c) => [c, ...(c.children ?? [])]);
-
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { periodType: 'MONTHLY', startDate: today, endDate: monthEnd },
   });
@@ -117,12 +114,15 @@ export function BudgetTab() {
             <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="p-5 space-y-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Category</label>
-                <select {...register('categoryId')} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400 bg-white">
-                  <option value="">Select category</option>
-                  {expenseCategories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.parentCategoryId ? '  └ ' : ''}{c.name}</option>
-                  ))}
-                </select>
+                <CategoryCombobox
+                  categories={categories}
+                  type="EXPENSE"
+                  value={watch('categoryId') ? Number(watch('categoryId')) : ''}
+                  onChange={(id) => setValue('categoryId', id ? String(id) : '', { shouldValidate: true })}
+                  emptyLabel=""
+                  placeholder="Search or pick a category"
+                  invalid={!!errors.categoryId}
+                />
                 {errors.categoryId && <p className="text-expense text-xs mt-1">{errors.categoryId.message}</p>}
               </div>
               <div>

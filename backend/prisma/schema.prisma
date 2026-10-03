@@ -421,6 +421,9 @@ model Recurring {
   toWallet     Wallet? @relation("RecurringToWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
 
   frequency      RecurringFrequency
+  // WEEKLY only: days of the week it repeats on (0 = Sunday … 6 = Saturday).
+  // Empty = once a week on the start date's weekday.
+  weekdays       Int[]              @default([])
   startDate      DateTime           @db.Date
   nextOccurrence DateTime           @db.Date
   endDate        DateTime?          @db.Date

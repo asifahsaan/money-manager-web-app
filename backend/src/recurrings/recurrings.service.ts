@@ -24,6 +24,7 @@ export class RecurringsService {
     await assertWalletsInAccount(this.prisma, dto.accountId, dto.walletId, dto.fromWalletId, dto.toWalletId);
     await assertCategoriesInAccount(this.prisma, dto.accountId, dto.categoryId);
     const startDate = new Date(dto.startDate);
+    const weekdays = this.cleanWeekdays(dto.frequency, dto.weekdays);
     return this.prisma.recurring.create({
       data: {
         accountId: dto.accountId,
@@ -36,8 +37,10 @@ export class RecurringsService {
         fromWalletId: dto.fromWalletId ?? null,
         toWalletId: dto.toWalletId ?? null,
         frequency: dto.frequency,
+        weekdays,
         startDate,
-        nextOccurrence: startDate,
+        // e.g. started on a Sunday but repeats Mon/Tue/Fri → first due Monday
+        nextOccurrence: this.alignToWeekdays(startDate, weekdays),
         endDate: dto.endDate ? new Date(dto.endDate) : null,
       },
       include: { category: true },
@@ -46,10 +49,23 @@ export class RecurringsService {
 
   async update(id: number, userId: number, dto: UpdateRecurringDto) {
     const r = await this.findAndVerify(id, userId);
-    await assertCategoriesInAccount(this.prisma, r.accountId, dto.categoryId);
+    await assertCategoriesInAccount(this.prisma, r.accountId, dto.categoryId ?? undefined);
+    await assertWalletsInAccount(this.prisma, r.accountId, dto.walletId ?? undefined, dto.fromWalletId ?? undefined, dto.toWalletId ?? undefined);
+
+    const frequency = dto.frequency ?? r.frequency;
+    const scheduleChanged = dto.frequency !== undefined || dto.weekdays !== undefined;
+    const weekdays = scheduleChanged ? this.cleanWeekdays(frequency, dto.weekdays ?? r.weekdays) : r.weekdays;
+    const base = dto.nextOccurrence ? new Date(dto.nextOccurrence) : r.nextOccurrence;
+    const nextOccurrence = scheduleChanged || dto.nextOccurrence ? this.alignToWeekdays(base, weekdays) : undefined;
+
     return this.prisma.recurring.update({
       where: { id: r.id },
       data: {
+        ...(scheduleChanged && { weekdays }),
+        ...(nextOccurrence && { nextOccurrence }),
+        ...(dto.walletId !== undefined && { walletId: dto.walletId }),
+        ...(dto.fromWalletId !== undefined && { fromWalletId: dto.fromWalletId }),
+        ...(dto.toWalletId !== undefined && { toWalletId: dto.toWalletId }),
         ...(dto.amount !== undefined && { amount: dto.amount }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.memo !== undefined && { memo: dto.memo }),
@@ -97,7 +113,7 @@ export class RecurringsService {
         }
       }
 
-      const nextOccurrence = this.calculateNext(r.nextOccurrence, r.frequency);
+      const nextOccurrence = this.calculateNext(r.nextOccurrence, r.frequency, r.weekdays);
       await tx.recurring.update({ where: { id: r.id }, data: { nextOccurrence } });
 
       return { transaction, nextOccurrence };
@@ -109,7 +125,22 @@ export class RecurringsService {
     await this.prisma.recurring.delete({ where: { id: r.id } });
   }
 
-  private calculateNext(from: Date, frequency: RecurringFrequency): Date {
+  /** Sorted, de-duplicated weekdays; only kept for WEEKLY. */
+  private cleanWeekdays(frequency: RecurringFrequency, weekdays?: number[]): number[] {
+    if (frequency !== 'WEEKLY' || !weekdays?.length) return [];
+    return [...new Set(weekdays)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
+  }
+
+  /** The first date on or after `from` that falls on one of `weekdays` (dates are UTC midnights). */
+  private alignToWeekdays(from: Date, weekdays: number[]): Date {
+    if (!weekdays.length) return from;
+    let d = from;
+    for (let i = 0; i < 7 && !weekdays.includes(d.getUTCDay()); i++) d = addDays(d, 1);
+    return d;
+  }
+
+  private calculateNext(from: Date, frequency: RecurringFrequency, weekdays: number[] = []): Date {
+    if (frequency === 'WEEKLY' && weekdays.length) return this.alignToWeekdays(addDays(from, 1), weekdays);
     switch (frequency) {
       case 'DAILY': return addDays(from, 1);
       case 'WEEKLY': return addWeeks(from, 1);
