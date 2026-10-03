@@ -8,7 +8,7 @@ import { walletService } from '@/services/wallet.service';
 import { categoryService } from '@/services/category.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { TransactionType, RecurringFrequency, Recurring } from '@/types';
-import { differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, getDaysInMonth, parseISO, startOfMonth } from 'date-fns';
+import { addDays, startOfDay, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, getDaysInMonth, parseISO, startOfMonth } from 'date-fns';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { RecurringFormModal, scheduleLabel } from './RecurringFormModal';
 
@@ -71,7 +71,7 @@ export function RecurringTab() {
 
   return (
     <div className="space-y-3">
-      <SectionBar title="Recurring" meta={recurrings.length ? `${recurrings.length} repeating transaction${recurrings.length === 1 ? '' : 's'} · run them when they're due` : 'Bills, salary and subscriptions that repeat'}>
+      <SectionBar title="Recurring" meta={recurrings.length ? `${recurrings.length} repeating transaction${recurrings.length === 1 ? '' : 's'} · added to your transactions automatically on each date` : 'Bills, salary and subscriptions that repeat'}>
         <AddButton label="Add recurring" onClick={() => setShowCreate(true)} />
       </SectionBar>
 
@@ -143,13 +143,13 @@ export function RecurringTab() {
                   </button>
                   <button
                     onClick={() => confirmExecute === r.id ? executeMutation.mutate(r.id) : setConfirmExecute(r.id)}
-                    title="Add this transaction now"
+                    title="Add the next one now, before its date (it's added automatically on the day anyway)"
                     className={cn(
                       'flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-all active:scale-95',
                       confirmExecute === r.id ? 'bg-green-600 text-white' : 'border border-line text-ink-muted hover:bg-gray-50 hover:text-ink',
                     )}
                   >
-                    <Play size={11} /> {confirmExecute === r.id ? 'Confirm' : 'Run'}
+                    <Play size={11} /> {confirmExecute === r.id ? 'Add now?' : 'Add early'}
                   </button>
                   <button
                     onClick={() => confirmDelete === r.id ? deleteMutation.mutate(r.id) : setConfirmDelete(r.id)}
@@ -186,12 +186,15 @@ function RecurringSummary({ items, currency }: { items: Recurring[]; currency: s
   const whole = (n: number) => formatCurrency(Math.round(n), currency);
   const month = format(now, 'MMMM');
   const next = [...items].sort((a, b) => a.nextOccurrence.localeCompare(b.nextOccurrence))[0];
-  const dueNow = items.filter((r) => differenceInCalendarDays(new Date(r.nextOccurrence), new Date()) <= 0).length;
+  const weekStart = addDays(startOfDay(now), 1);
+  const weekEnd = addDays(startOfDay(now), 7);
+  const upcoming = items.filter((r) => r.transactionType === 'EXPENSE').reduce((t, r) => t + Number(r.amount) * occurrencesIn(r, weekStart, weekEnd), 0);
+  const upcomingCount = items.reduce((t, r) => t + occurrencesIn(r, weekStart, weekEnd), 0);
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard label={`Recurring income in ${month}`} tone="income" value={whole(inflow)} sub={`About ${whole(average('INCOME'))} in an average month`} />
       <StatCard label={`Recurring bills in ${month}`} tone="expense" value={whole(outflow)} sub={`About ${whole(average('EXPENSE'))} in an average month`} />
-      <StatCard label="Due now" tone={dueNow ? 'warning' : 'neutral'} value={String(dueNow)} sub={dueNow ? 'Tap Run to add them' : 'Nothing waiting'} />
+      <StatCard label="Bills in the next 7 days" tone={upcoming ? 'warning' : 'neutral'} value={whole(upcoming)} sub={upcomingCount ? `${upcomingCount} entr${upcomingCount === 1 ? 'y' : 'ies'} will be added automatically` : 'Nothing scheduled'} />
       <StatCard label="Next up" tone="brand" value={next ? format(new Date(next.nextOccurrence), 'EEE d MMM') : '—'} sub={next ? (next.description || next.category?.name || scheduleLabel(next)) : ''} />
     </div>
   );

@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { recurringService } from '@/services/recurring.service';
 import { CategoryCombobox } from '@/components/shared/CategoryCombobox';
 import { apiErrorMessage } from '@/lib/api-error';
+import { refreshAfterRecurring } from '@/lib/use-auto-recurring';
 import { cn } from '@/lib/utils';
 import type { Category, Recurring, RecurringFrequency, TransactionType, Wallet } from '@/types';
 
@@ -105,9 +106,13 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
           : { walletId: walletId || undefined, categoryId: categoryId || undefined }),
       });
     },
-    onSuccess: () => {
-      toast.success(isEdit ? 'Recurring updated' : 'Recurring created');
-      qc.invalidateQueries({ queryKey: ['recurrings', accountId] });
+    onSuccess: async () => {
+      // Add any dates that are already due (e.g. it started earlier this week)
+      const { created } = await recurringService.processDue(accountId).catch(() => ({ created: 0 }));
+      toast.success(
+        `${isEdit ? 'Recurring updated' : 'Recurring created'}${created ? ` · added ${created} past entr${created === 1 ? 'y' : 'ies'}` : ''}`,
+      );
+      refreshAfterRecurring(qc);
       onClose();
     },
     onError: (err) => setError(apiErrorMessage(err, 'Could not save')),
@@ -234,6 +239,10 @@ export function RecurringFormModal({ accountId, wallets, categories, editing, on
                 </div>
               </div>
             </div>
+
+            <p className="mt-2 text-[11px] text-ink-muted">
+              Added to your transactions automatically on each date{date < today && !isEdit ? ' — dates before today are added right away' : ''}. Skipped a day? Just delete or edit that entry.
+            </p>
 
             {schedule === 'DAYS' && (
               <div className="mt-2.5">

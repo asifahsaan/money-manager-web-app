@@ -24,6 +24,13 @@ export class RecurringsController {
     return this.recurringsService.create(user.sub, dto);
   }
 
+  /** Adds every recurring transaction that has come due (called when the app opens). */
+  @Post('process-due')
+  @HttpCode(HttpStatus.OK)
+  processDue(@Query('accountId', ParseIntPipe) accountId: number, @CurrentUser() user: JwtUser) {
+    return this.recurringsService.processDue(accountId, user.sub);
+  }
+
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRecurringDto, @CurrentUser() user: JwtUser) {
     return this.recurringsService.update(id, user.sub, dto);

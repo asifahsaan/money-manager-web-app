@@ -37,6 +37,12 @@ export const recurringService = {
   }>) =>
     apiClient.patch<ApiResponse<Recurring>>(`/recurrings/${id}`, data).then((r) => r.data.data),
 
+  /** Adds every occurrence that has come due; returns how many were added. */
+  processDue: (accountId: number) =>
+    apiClient
+      .post<ApiResponse<{ created: number }>>('/recurrings/process-due', null, { params: { accountId } })
+      .then((r) => r.data.data),
+
   execute: (id: number) =>
     apiClient.post(`/recurrings/${id}/execute`).then((r) => r.data),
 

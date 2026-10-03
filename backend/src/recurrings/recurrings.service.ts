@@ -1,8 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecurringDto } from './dto/create-recurring.dto';
 import { UpdateRecurringDto } from './dto/update-recurring.dto';
-import { RecurringFrequency } from '@prisma/client';
+import { Prisma, Recurring, RecurringFrequency } from '@prisma/client';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import { assertWalletsInAccount, assertCategoriesInAccount } from '../common/utils/ownership';
 
@@ -78,46 +78,90 @@ export class RecurringsService {
     });
   }
 
+  /** "Run now": add the next occurrence immediately (even before its date). */
   async execute(id: number, userId: number) {
     const r = await this.findAndVerify(id, userId);
+    const result = await this.prisma.$transaction((tx) => this.postOccurrence(tx, r));
+    if (!result) throw new ConflictException('This one was just added — refresh and try again');
+    return result;
+  }
 
-    return this.prisma.$transaction(async (tx) => {
-      const txDate = r.nextOccurrence;
-
-      const transaction = await tx.transaction.create({
-        data: {
-          accountId: r.accountId,
-          type: r.transactionType,
-          amount: r.amount,
-          description: r.description ?? `Recurring: ${r.frequency}`,
-          date: txDate,
-          datetime: txDate,
-          categoryId: r.categoryId ?? null,
-          walletId: r.walletId ?? null,
-          fromWalletId: r.fromWalletId ?? null,
-          toWalletId: r.toWalletId ?? null,
-        },
-      });
-
-      // Update wallet balances
-      if (r.transactionType === 'INCOME' && r.walletId) {
-        await tx.wallet.update({ where: { id: r.walletId }, data: { currentBalance: { increment: Number(r.amount) } } });
-      } else if (r.transactionType === 'EXPENSE' && r.walletId) {
-        await tx.wallet.update({ where: { id: r.walletId }, data: { currentBalance: { decrement: Number(r.amount) } } });
-      } else if (r.transactionType === 'TRANSFER') {
-        if (r.fromWalletId) {
-          await tx.wallet.update({ where: { id: r.fromWalletId }, data: { currentBalance: { decrement: Number(r.amount) } } });
-        }
-        if (r.toWalletId) {
-          await tx.wallet.update({ where: { id: r.toWalletId }, data: { currentBalance: { increment: Number(r.amount) } } });
-        }
-      }
-
-      const nextOccurrence = this.calculateNext(r.nextOccurrence, r.frequency, r.weekdays);
-      await tx.recurring.update({ where: { id: r.id }, data: { nextOccurrence } });
-
-      return { transaction, nextOccurrence };
+  /**
+   * Adds every occurrence that is due (on or before today in Pakistan) for
+   * the account's active recurrings, each on its own date — so opening the
+   * app after a few days catches up. Safe to call repeatedly: an occurrence
+   * is only posted by whoever moves nextOccurrence first.
+   */
+  async processDue(accountId: number, userId: number) {
+    await this.verifyOwnership(accountId, userId);
+    const today = this.todayInPakistan();
+    const due = await this.prisma.recurring.findMany({
+      where: { accountId, isActive: true, nextOccurrence: { lte: today } },
     });
+
+    let created = 0;
+    for (const item of due) {
+      let r = item;
+      // cap the catch-up so a forgotten daily item can't flood the account
+      for (let i = 0; i < 400 && r.nextOccurrence <= today; i++) {
+        if (r.endDate && r.nextOccurrence > r.endDate) {
+          await this.prisma.recurring.update({ where: { id: r.id }, data: { isActive: false } });
+          break;
+        }
+        const res = await this.prisma.$transaction((tx) => this.postOccurrence(tx, r));
+        if (!res) break; // another request got there first
+        created++;
+        r = { ...r, nextOccurrence: res.nextOccurrence };
+      }
+    }
+    return { created };
+  }
+
+  /** Creates the transaction for r.nextOccurrence and moves the schedule on. Null if already taken. */
+  private async postOccurrence(tx: Prisma.TransactionClient, r: Recurring) {
+    const txDate = r.nextOccurrence;
+    const nextOccurrence = this.calculateNext(txDate, r.frequency, r.weekdays);
+
+    // Claim this occurrence first; a parallel call sees count 0 and backs off
+    const claimed = await tx.recurring.updateMany({
+      where: { id: r.id, nextOccurrence: txDate },
+      data: { nextOccurrence },
+    });
+    if (claimed.count === 0) return null;
+
+    const transaction = await tx.transaction.create({
+      data: {
+        accountId: r.accountId,
+        type: r.transactionType,
+        amount: r.amount,
+        description: r.description ?? `Recurring: ${r.frequency}`,
+        date: txDate,
+        datetime: txDate,
+        categoryId: r.categoryId ?? null,
+        walletId: r.walletId ?? null,
+        fromWalletId: r.fromWalletId ?? null,
+        toWalletId: r.toWalletId ?? null,
+        recurringId: r.id,
+      },
+    });
+
+    const amount = Number(r.amount);
+    if (r.transactionType === 'INCOME' && r.walletId) {
+      await tx.wallet.update({ where: { id: r.walletId }, data: { currentBalance: { increment: amount } } });
+    } else if (r.transactionType === 'EXPENSE' && r.walletId) {
+      await tx.wallet.update({ where: { id: r.walletId }, data: { currentBalance: { decrement: amount } } });
+    } else if (r.transactionType === 'TRANSFER') {
+      if (r.fromWalletId) await tx.wallet.update({ where: { id: r.fromWalletId }, data: { currentBalance: { decrement: amount } } });
+      if (r.toWalletId) await tx.wallet.update({ where: { id: r.toWalletId }, data: { currentBalance: { increment: amount } } });
+    }
+
+    return { transaction, nextOccurrence };
+  }
+
+  /** Today's date in Pakistan as a UTC-midnight Date, matching how @db.Date columns come back. */
+  private todayInPakistan(): Date {
+    const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
+    return new Date(`${ymd}T00:00:00.000Z`);
   }
 
   async delete(id: number, userId: number) {

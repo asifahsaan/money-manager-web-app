@@ -15,12 +15,14 @@ import { BrandMark } from '@/components/shared/BrandMark';
 import { pageTitle } from '@/components/shared/navigation';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
+import { useAutoRecurring } from '@/lib/use-auto-recurring';
 
 const COLLAPSE_KEY = 'mm_sidebar_collapsed';
 
 export function DashboardLayout() {
   const { token, isInitialized } = useAuthStore();
   const { setAccounts, activeAccountId, accounts } = useAccountStore();
+  useAutoRecurring(token ? activeAccountId : null);
   const { open: quickAddOpen, setOpen: setQuickAddOpen } = useQuickAddStore();
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {

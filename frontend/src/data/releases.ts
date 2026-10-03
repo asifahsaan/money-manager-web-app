@@ -19,6 +19,7 @@ export const RELEASES: Release[] = [
     date: '2026-10-03',
     title: 'A tighter layout & a new calendar',
     changes: [
+      { kind: 'new', text: 'Recurring transactions are added automatically on their dates — no more pressing Run. Opened the app after a few days? Every missed date is filled in, each on its own day. Didn’t go that day? Just delete or edit that entry.' },
       { kind: 'new', text: 'Recurring on chosen weekdays — e.g. a rider every Mon, Tue and Fri, or office trips Mon–Fri only. Each Run moves it to the next chosen day.' },
       { kind: 'new', text: 'Edit a recurring transaction — amount, wallet, category, schedule or the next due date.' },
       { kind: 'improved', text: 'Category fields are searchable — type a few letters to find it (recurring, budgets and the transaction filter).' },
