@@ -10,10 +10,14 @@ export function refreshAfterRecurring(qc: QueryClient) {
   }
 }
 
+// While the app is open and visible; hidden tabs don't poll (they catch up on return)
+const CHECK_EVERY_MS = 2 * 60_000;
+
 /**
  * Adds recurring transactions that have come due — when the app opens, when
- * the account changes and when the tab comes back after being hidden (e.g.
- * the next morning). The server dates each entry on its own due date.
+ * the account changes, when the tab comes back after being hidden, and every
+ * couple of minutes while it stays open (so an 8:30 AM item shows up at 8:30
+ * without a refresh). The server dates each entry on its own due date.
  */
 export function useAutoRecurring(accountId: number | null | undefined) {
   const qc = useQueryClient();
@@ -37,6 +41,10 @@ export function useAutoRecurring(accountId: number | null | undefined) {
     run();
     const onVisible = () => document.visibilityState === 'visible' && run();
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    const timer = window.setInterval(onVisible, CHECK_EVERY_MS);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(timer);
+    };
   }, [accountId, qc]);
 }
