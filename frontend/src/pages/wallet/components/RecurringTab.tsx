@@ -10,6 +10,8 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { TransactionType, RecurringFrequency, Recurring } from '@/types';
 import { addDays, startOfDay, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, getDaysInMonth, parseISO, startOfMonth } from 'date-fns';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
+import { refreshAfterRecurring } from '@/lib/use-auto-recurring';
+import { apiErrorMessage } from '@/lib/api-error';
 import { RecurringFormModal, scheduleLabel, formatTime } from './RecurringFormModal';
 
 // How many times a frequency happens in an average month
@@ -43,6 +45,19 @@ export function RecurringTab() {
     enabled: !!accountId,
   });
 
+  const toggleMutation = useMutation({
+    mutationFn: (r: Recurring) => recurringService.update(r.id, { isActive: !r.isActive }),
+    onSuccess: (updated) => {
+      toast.success(
+        updated.isActive
+          ? `Turned on — next entry ${format(new Date(updated.nextOccurrence), 'EEE d MMM')}${updated.time ? `, ${formatTime(updated.time)}` : ''}`
+          : 'Turned off — no entries will be added until you turn it on',
+      );
+      refreshAfterRecurring(qc);
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Could not change it')),
+  });
+
   const executeMutation = useMutation({
     mutationFn: (id: number) => recurringService.execute(id),
     onSuccess: () => {
@@ -71,11 +86,11 @@ export function RecurringTab() {
 
   return (
     <div className="space-y-3">
-      <SectionBar title="Recurring" meta={recurrings.length ? `${recurrings.length} repeating transaction${recurrings.length === 1 ? '' : 's'} · added to your transactions automatically on each date` : 'Bills, salary and subscriptions that repeat'}>
+      <SectionBar title="Recurring" meta={recurrings.length ? `${recurrings.filter((r) => r.isActive).length} on${recurrings.some((r) => !r.isActive) ? ` · ${recurrings.filter((r) => !r.isActive).length} off` : ''} · added to your transactions automatically on each date — switch one off to pause it` : 'Bills, salary and subscriptions that repeat'}>
         <AddButton label="Add recurring" onClick={() => setShowCreate(true)} />
       </SectionBar>
 
-      {recurrings.length > 0 && <RecurringSummary items={recurrings} currency={currency} />}
+      {recurrings.length > 0 && <RecurringSummary items={recurrings.filter((r) => r.isActive)} currency={currency} />}
 
       {(showCreate || editing) && (
         <RecurringFormModal
@@ -98,26 +113,47 @@ export function RecurringTab() {
         </div>
       ) : (
         <ul className="card divide-y divide-gray-100">
-          {[...recurrings].sort((x, y) => x.nextOccurrence.localeCompare(y.nextOccurrence)).map((r) => {
+          {[...recurrings].sort((x, y) => Number(y.isActive) - Number(x.isActive) || x.nextOccurrence.localeCompare(y.nextOccurrence)).map((r) => {
             const isIncome = r.transactionType === 'INCOME';
             const isTransfer = r.transactionType === 'TRANSFER';
             const tone = isIncome ? 'text-income' : isTransfer ? 'text-blue-600' : 'text-expense';
             const Icon = isIncome ? ArrowDownLeft : isTransfer ? ArrowLeftRight : ArrowUpRight;
             const days = differenceInCalendarDays(new Date(r.nextOccurrence), new Date());
             const walletName = (id: number | null) => (id ? wallets.find((w) => w.id === id)?.name : undefined);
+            const ended = !!r.endDate && r.nextOccurrence.slice(0, 10) > r.endDate.slice(0, 10);
+            const paused = !r.isActive;
             const via = isTransfer
               ? [walletName(r.fromWalletId), walletName(r.toWalletId)].filter(Boolean).join(' → ')
               : walletName(r.walletId);
             return (
-              <li key={r.id} className="flex items-center gap-3 px-3.5 py-2.5">
+              <li key={r.id} className={cn('flex items-center gap-3 px-3.5 py-2.5', paused && 'bg-gray-50/60')}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!paused}
+                  onClick={() => toggleMutation.mutate(r)}
+                  disabled={toggleMutation.isPending || ended}
+                  title={ended ? 'Ended — change the end date in Edit to restart' : paused ? 'Off — tap to turn on' : 'On — tap to turn off (pause)'}
+                  className={cn(
+                    'relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40',
+                    paused ? 'bg-gray-300' : 'bg-primary-600',
+                  )}
+                >
+                  <span className={cn('absolute left-0 top-0.5 h-4 w-4 rounded-full shadow transition-transform', paused ? 'translate-x-0.5' : 'translate-x-[18px]')} style={{ backgroundColor: '#ffffff' }} />
+                </button>
                 <span
-                  className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', !r.category?.color && (isIncome ? 'bg-income-light' : isTransfer ? 'bg-blue-50' : 'bg-expense-light'))}
+                  className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', paused && 'opacity-40 grayscale', !r.category?.color && (isIncome ? 'bg-income-light' : isTransfer ? 'bg-blue-50' : 'bg-expense-light'))}
                   style={r.category?.color ? { backgroundColor: r.category.color } : undefined}
                 >
                   <Icon size={16} className={r.category?.color ? 'text-white' : tone} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{r.description || r.category?.name || 'Recurring'}</p>
+                  <p className={cn('flex items-center gap-1.5 truncate text-sm font-semibold', paused ? 'text-ink-muted' : 'text-ink')}>
+                    <span className="truncate">{r.description || r.category?.name || 'Recurring'}</span>
+                    {paused && (
+                      <span className="shrink-0 rounded bg-gray-200 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">{ended ? 'Ended' : 'Off'}</span>
+                    )}
+                  </p>
                   <p className="truncate text-[11px] text-ink-muted">
                     {scheduleLabel(r)}
                     {r.time ? ` · ${formatTime(r.time)}` : ''}
@@ -126,12 +162,21 @@ export function RecurringTab() {
                   </p>
                 </div>
                 <div className="hidden w-28 shrink-0 text-right sm:block">
-                  <p className={cn('text-xs font-semibold', days < 0 ? 'text-expense' : days <= 3 ? 'text-orange-600' : 'text-ink')}>
-                    {days < 0 ? `Overdue ${-days}d` : days === 0 ? 'Due today' : days === 1 ? 'Tomorrow' : `In ${days} days`}
-                  </p>
-                  <p className="text-[11px] text-ink-muted">{format(new Date(r.nextOccurrence), 'd MMM yyyy')}{r.time ? `, ${formatTime(r.time)}` : ''}</p>
+                  {paused ? (
+                    <>
+                      <p className="text-xs font-semibold text-ink-muted">{ended ? 'Ended' : 'Turned off'}</p>
+                      <p className="text-[11px] text-ink-muted">{ended ? `on ${format(new Date(r.endDate!), 'd MMM yyyy')}` : 'No entries added'}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className={cn('text-xs font-semibold', days < 0 ? 'text-expense' : days <= 3 ? 'text-orange-600' : 'text-ink')}>
+                        {days < 0 ? `Overdue ${-days}d` : days === 0 ? 'Due today' : days === 1 ? 'Tomorrow' : `In ${days} days`}
+                      </p>
+                      <p className="text-[11px] text-ink-muted">{format(new Date(r.nextOccurrence), 'd MMM yyyy')}{r.time ? `, ${formatTime(r.time)}` : ''}</p>
+                    </>
+                  )}
                 </div>
-                <p className={cn('w-28 shrink-0 text-right text-sm font-bold tabular-nums', tone)}>
+                <p className={cn('w-28 shrink-0 text-right text-sm font-bold tabular-nums', paused ? 'text-ink-muted' : tone)}>
                   {isIncome ? '+' : isTransfer ? '' : '−'}{formatCurrency(Number(r.amount), currency)}
                 </p>
                 <div className="flex shrink-0 items-center gap-1">
@@ -144,10 +189,12 @@ export function RecurringTab() {
                   </button>
                   <button
                     onClick={() => confirmExecute === r.id ? executeMutation.mutate(r.id) : setConfirmExecute(r.id)}
+                    disabled={paused}
                     title="Add the next one now, before its date (it's added automatically on the day anyway)"
                     className={cn(
                       'flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-all active:scale-95',
                       confirmExecute === r.id ? 'bg-green-600 text-white' : 'border border-line text-ink-muted hover:bg-gray-50 hover:text-ink',
+                      paused && 'invisible',
                     )}
                   >
                     <Play size={11} /> {confirmExecute === r.id ? 'Add now?' : 'Add early'}

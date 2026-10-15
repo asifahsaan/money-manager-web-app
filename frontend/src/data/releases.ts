@@ -22,6 +22,7 @@ export const RELEASES: Release[] = [
       { kind: 'new', text: 'Month-end forecast on Overview — what each wallet should have on the last day, from your recurring items and your usual day-to-day spending.' },
       { kind: 'new', text: 'Heads up: warns when a wallet is about to go below zero (and which wallet to top it up from), and when a budget will run out before the month ends.' },
       { kind: 'new', text: 'Budget cards say when the money runs out at your current pace, counting only the budget’s spending days.' },
+      { kind: 'new', text: 'Turn a recurring transaction off and on with a switch — while it’s off nothing is added; turned back on, it carries on from its next date (the days it was off aren’t filled in).' },
       { kind: 'new', text: 'Quick add: type one line like “300 rider cash”, “salary 180k meezan”, “2000 meezan to jazzcash” or “dinner 2.3k yesterday 9pm” and the form fills itself.' },
       { kind: 'new', text: 'As you type a note, your past entries pop up — pick one to fill its category, wallet and amount.' },
     ],

@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecurringDto } from './dto/create-recurring.dto';
 import { UpdateRecurringDto } from './dto/update-recurring.dto';
@@ -57,7 +57,14 @@ export class RecurringsService {
     const scheduleChanged = dto.frequency !== undefined || dto.weekdays !== undefined;
     const weekdays = scheduleChanged ? this.cleanWeekdays(frequency, dto.weekdays ?? r.weekdays) : r.weekdays;
     const base = dto.nextOccurrence ? new Date(dto.nextOccurrence) : r.nextOccurrence;
-    const nextOccurrence = scheduleChanged || dto.nextOccurrence ? alignToWeekdays(base, weekdays) : undefined;
+    let nextOccurrence = scheduleChanged || dto.nextOccurrence ? alignToWeekdays(base, weekdays) : undefined;
+
+    // Turning it back on: skip the dates it was paused for — carry on from the
+    // next scheduled date that's still ahead, instead of back-filling them
+    const resuming = dto.isActive === true && !r.isActive;
+    if (resuming) {
+      nextOccurrence = this.nextUpcoming(nextOccurrence ?? r.nextOccurrence, frequency, weekdays, dto.time !== undefined ? dto.time : r.time);
+    }
 
     return this.prisma.recurring.update({
       where: { id: r.id },
@@ -83,6 +90,7 @@ export class RecurringsService {
   /** "Run now": add the next occurrence immediately (even before its date). */
   async execute(id: number, userId: number) {
     const r = await this.findAndVerify(id, userId);
+    if (!r.isActive) throw new BadRequestException('This recurring is paused — turn it on first');
     const result = await this.prisma.$transaction((tx) => this.postOccurrence(tx, r));
     if (!result) throw new ConflictException('This one was just added — refresh and try again');
     return result;
@@ -169,6 +177,20 @@ export class RecurringsService {
   async delete(id: number, userId: number) {
     const r = await this.findAndVerify(id, userId);
     await this.prisma.recurring.delete({ where: { id: r.id } });
+  }
+
+  /**
+   * First date on the schedule from today on; today only if its time hasn't
+   * passed yet (an item that was due at 8:00 isn't added when resumed at 9:00).
+   */
+  private nextUpcoming(from: Date, frequency: RecurringFrequency, weekdays: number[], time: string | null): Date {
+    const today = todayInPakistan();
+    const now = timeInPakistan();
+    let d = alignToWeekdays(from, weekdays);
+    for (let i = 0; i < 2000 && (d < today || (d.getTime() === today.getTime() && !!time && time <= now)); i++) {
+      d = nextOccurrenceAfter(d, frequency, weekdays);
+    }
+    return d;
   }
 
   /** Sorted, de-duplicated weekdays; only kept for WEEKLY. */
