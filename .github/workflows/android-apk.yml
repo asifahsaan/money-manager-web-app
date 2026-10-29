@@ -1,0 +1,58 @@
+# Builds an installable Android APK of the app on GitHub's machines.
+# Runs when the frontend changes on main, or by hand from the Actions tab
+# (Run workflow). Download it from the run page → Artifacts → money-manager-apk.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install
+        run: npm ci
+
+      # .env.production points the app at the live backend on Render
+      - name: Build the web app
+        run: npm run build
+
+      - name: Copy it into the Android project
+        run: npx cap sync android
+
+      - name: Build the APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          VERSION=$(node -p "require('../package.json').version")
+          ./gradlew assembleDebug --no-daemon -PversionCode=${{ github.run_number }} -PversionName=$VERSION
+          mkdir -p ../../apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../../apk/money-manager-$VERSION-build${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: money-manager-apk
+          path: apk/*.apk
+          retention-days: 30
