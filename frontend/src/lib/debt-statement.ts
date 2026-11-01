@@ -49,8 +49,10 @@ export interface StatementInput {
 
 const day = (iso: string) => format(parseISO(iso.slice(0, 10)), 'd MMM yyyy');
 
-export function statementSubject(personName: string, lang: ReminderLanguage) {
-  return lang === 'ur' ? `${personName.trim()} — hisaab ki tafseel` : `Statement of account — ${personName.trim()}`;
+export function statementSubject(personName: string, lang: ReminderLanguage, ownerName = '') {
+  const between = [ownerName.trim(), personName.trim()].filter(Boolean).join(' & ');
+  const today = format(new Date(), 'd MMM yyyy');
+  return `${lang === 'ur' ? 'Hisaab ki tafseel' : 'Statement of account'} — ${between} — ${today}`;
 }
 
 export function statementText({ personName, debts, walletName, lang, ownerName, currency }: StatementInput): string {

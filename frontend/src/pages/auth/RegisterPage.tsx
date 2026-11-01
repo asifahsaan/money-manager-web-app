@@ -143,6 +143,9 @@ export function RegisterPage() {
           Sign in
         </Link>
       </p>
+      <p className="mt-2 text-center text-xs text-app-text-secondary">
+        <Link to="/privacy" className="hover:underline">How your data is kept</Link>
+      </p>
     </div>
   );
 }

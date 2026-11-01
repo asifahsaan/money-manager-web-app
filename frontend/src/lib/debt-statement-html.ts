@@ -20,6 +20,7 @@ const C = {
   red: '#B91C1C',
   redBg: '#FEF2F2',
 };
+const APP_URL = 'https://money-manager-web-app.vercel.app';
 const FONT = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -130,7 +131,8 @@ export function statementHtml({ personName, debts, walletName, lang, ownerName, 
     ${T('Shukriya,', 'Kind regards,')}<br><b>${owner}</b>
   </td></tr>
   <tr><td style="border-top:1px solid ${C.line};background:${C.soft};padding:12px 20px;${FONT}font-size:11px;color:${C.muted};">
-    ${T(`${owner} ne yeh statement Money Manager se bheja hai.`, `Sent by ${owner} with Money Manager.`)}
+    ${T(`${owner} ne yeh statement Money Manager se bheja hai — paise aur udhaar ka hisaab rakhne ki free app.`, `Sent by ${owner} with Money Manager, a free app to track your money and loans.`)}
+    <a href="${APP_URL}" style="color:${C.brand};font-weight:600;text-decoration:none;white-space:nowrap;">${T('Dekhiye', 'Try it')} &rarr;</a>
   </td></tr>
 </table>
 </td></tr></table>

@@ -15,6 +15,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.16.0',
+    date: '2026-11-01',
+    title: 'Ready to share',
+    changes: [
+      { kind: 'new', text: 'Admin panel: see when each person last used the app and how many were active in the last 7 days.' },
+      { kind: 'new', text: 'Admin panel: a badge shows new sign-ups since you last looked, and new people are marked in the list.' },
+      { kind: 'new', text: 'A Privacy page explains what is stored, where, and who can see it.' },
+      { kind: 'improved', text: 'Statement emails read properly on a phone, and the subject now shows both names and the date.' },
+      { kind: 'improved', text: 'The designed statement email has a small link to Money Manager in its footer.' },
+    ],
+  },
+  {
     version: '1.15.0',
     date: '2026-11-01',
     title: 'Debts by person',

@@ -13,6 +13,14 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  /** Records when someone last used the app — at most one write per 5 minutes, never fails the request. */
+  touchLastActive(user: User): void {
+    if (user.lastActiveAt && Date.now() - user.lastActiveAt.getTime() < 5 * 60_000) return;
+    this.prisma.user
+      .update({ where: { id: user.id }, data: { lastActiveAt: new Date(), updatedAt: user.updatedAt } })
+      .catch(() => undefined);
+  }
+
   async updateProfile(id: number, data: { name?: string }): Promise<Omit<User, 'passwordHash'>> {
     const user = await this.prisma.user.update({
       where: { id },

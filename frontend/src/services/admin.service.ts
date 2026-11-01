@@ -13,6 +13,7 @@ export interface AdminStats {
   expenseVolumeThisMonth: number;
   totalWallets: number;
   totalAccounts: number;
+  activeLast7Days: number;
 }
 
 export interface AdminUser {
@@ -22,6 +23,7 @@ export interface AdminUser {
   role: 'USER' | 'ADMIN' | 'SUPERADMIN';
   isActive: boolean;
   createdAt: string;
+  lastActiveAt: string | null;
   defaultCurrency: string;
   txCount: number;
   lastActivity: string | null;
@@ -39,6 +41,9 @@ export const adminService = {
     apiClient.get<{ data: { users: AdminUser[]; total: number; pages: number } }>('/admin/users', {
       params: { search, page, limit },
     }).then(r => r.data.data),
+
+  countNewUsers: (since: string) =>
+    apiClient.get<{ data: { count: number } }>('/admin/users/new-count', { params: { since } }).then(r => r.data.data.count),
 
   getUser: (id: number) => apiClient.get<{ data: AdminUser }>(`/admin/users/${id}`).then(r => r.data.data),
 

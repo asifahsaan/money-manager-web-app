@@ -23,6 +23,7 @@ const StatisticsPage = page(() => import('@/pages/statistics/StatisticsPage'), '
 const StatementsPage = page(() => import('@/pages/statements/StatementsPage'), 'StatementsPage');
 const TaxReportPage = page(() => import('@/pages/tax/TaxReportPage'), 'TaxReportPage');
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage');
+const PrivacyPage = page(() => import('@/pages/legal/PrivacyPage'), 'PrivacyPage');
 const AdminPage = page(() => import('@/pages/admin/AdminPage'), 'AdminPage');
 const LandingPage = page(() => import('@/pages/landing/LandingPage'), 'LandingPage');
 
@@ -70,6 +71,7 @@ const router = createBrowserRouter([
     ],
   },
   { path: '/admin', element: withSuspense(<AdminPage />) },
+  { path: '/privacy', element: withSuspense(<PrivacyPage />) },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 

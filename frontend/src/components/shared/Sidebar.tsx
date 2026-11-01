@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
+import { useNewSignups } from '@/lib/use-new-signups';
 import { BrandMark } from './BrandMark';
 import { PRIMARY_NAV, SETTINGS_NAV, ADMIN_NAV, type NavItem } from './navigation';
 
@@ -19,15 +20,15 @@ function initials(name: string) {
     .join('');
 }
 
-function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function SidebarLink({ item, collapsed, badge = 0 }: { item: NavItem; collapsed: boolean; badge?: number }) {
   const Icon = item.icon;
   return (
     <NavLink
       to={item.to}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? (badge ? `${item.label} · ${badge} new` : item.label) : undefined}
       className={({ isActive }) =>
         cn(
-          'group flex h-10 items-center gap-3 rounded-lg px-3 text-sm',
+          'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm',
           isActive ? 'nav-item-active' : 'nav-item-inactive',
           collapsed && 'justify-center px-0',
         )
@@ -35,6 +36,14 @@ function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
     >
       <Icon size={18} strokeWidth={2} className="flex-shrink-0" />
       {!collapsed && <span className="truncate">{item.label}</span>}
+      {badge > 0 && (
+        <span className={cn(
+          'flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-expense px-1 text-[10px] font-bold text-white',
+          collapsed ? 'absolute right-1 top-0.5' : 'ml-auto',
+        )}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </NavLink>
   );
 }
@@ -44,6 +53,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const resetAccounts = useAccountStore((s) => s.reset);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user && (user.role === 'ADMIN' || user.role === 'SUPERADMIN');
+  const newSignups = useNewSignups(!!isAdmin);
 
   const handleLogout = () => {
     clearAuth();
@@ -73,7 +83,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       </nav>
 
       <div className="space-y-0.5 border-t border-line px-3 py-3">
-        {isAdmin && <SidebarLink item={ADMIN_NAV} collapsed={collapsed} />}
+        {isAdmin && <SidebarLink item={ADMIN_NAV} collapsed={collapsed} badge={newSignups} />}
         <SidebarLink item={SETTINGS_NAV} collapsed={collapsed} />
 
         {user && (

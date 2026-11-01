@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -15,9 +15,13 @@ import { adminService, AdminUser } from '@/services/admin.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { markSignupsSeen, signupsSeenAt, useNewSignups } from '@/lib/use-new-signups';
 
 type Tab = 'dashboard' | 'users' | 'reports';
+
+const lastActive = (u: AdminUser) =>
+  u.lastActiveAt ? formatDistanceToNow(new Date(u.lastActiveAt), { addSuffix: true }) : 'Not seen yet';
 
 function KpiCard({ label, value, sub, color, icon: Icon }: {
   label: string; value: string | number; sub?: string; color: string;
@@ -51,6 +55,16 @@ export function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<AdminUser | null>(null);
 
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  // Kept from when the page opened, so the New pills stay after the badge clears
+  const [seenAt] = useState(signupsSeenAt);
+  const isNew = (u: AdminUser) => u.createdAt > seenAt;
+  const newSignups = useNewSignups(user?.role !== 'USER');
+
+  useEffect(() => {
+    if (tab !== 'users') return;
+    markSignupsSeen();
+    void qc.invalidateQueries({ queryKey: ['admin-new-signups'] });
+  }, [tab, qc]);
 
   // Redirect non-admins
   if (user && user.role === 'USER') {
@@ -160,6 +174,9 @@ export function AdminPage() {
                 tab === key ? 'border-amber-400 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700',
               )}>
               <Icon size={15} /> {label}
+              {key === 'users' && tab !== 'users' && newSignups > 0 && (
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{newSignups} new</span>
+              )}
             </button>
           ))}
         </div>
@@ -180,7 +197,7 @@ export function AdminPage() {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard label="Total Accounts" value={stats?.totalAccounts ?? '…'} sub="finance profiles" color="#8B5CF6" icon={Shield} />
+              <KpiCard label="Active, Last 7 Days" value={stats?.activeLast7Days ?? '…'} sub="people who opened the app" color="#8B5CF6" icon={Activity} />
               <KpiCard label="Total Wallets" value={stats?.totalWallets ?? '…'} sub="across all users" color="#EC4899" icon={Wallet} />
               <KpiCard label="Inactive Users" value={stats?.inactiveUsers ?? '…'} sub="deactivated" color="#6B7280" icon={ShieldOff} />
               <KpiCard label="This Month Volume" value={stats ? formatCurrency(stats.expenseVolumeThisMonth, 'Rs.') : '…'} sub="expenses" color="#F97316" icon={TrendingUp} />
@@ -202,7 +219,10 @@ export function AdminPage() {
                       {u.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{u.name}</p>
+                      <p className="text-xs font-semibold text-gray-800 truncate">
+                        {u.name}
+                        {isNew(u) && <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600">NEW</span>}
+                      </p>
                       <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
                     </div>
                     <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0', roleBg[u.role])}>{u.role}</span>
@@ -211,6 +231,7 @@ export function AdminPage() {
                       {u.isActive ? 'active' : 'inactive'}
                     </span>
                     <p className="text-[10px] text-gray-400 flex-shrink-0">{u.txCount} tx</p>
+                    <p className="hidden sm:block w-24 text-right text-[10px] text-gray-400 flex-shrink-0">{lastActive(u)}</p>
                   </div>
                 ))}
               </div>
@@ -233,18 +254,18 @@ export function AdminPage() {
               {search && <button onClick={() => setSearch('')}><X size={14} className="text-gray-400" /></button>}
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+              <table className="w-full min-w-[720px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['User', 'Role', 'Status', 'Transactions', 'Joined', 'Actions'].map((h) => (
+                    {['User', 'Role', 'Status', 'Transactions', 'Last Active', 'Joined', 'Actions'].map((h) => (
                       <th key={h} className="text-left text-[10px] font-bold text-gray-500 uppercase tracking-wide px-4 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {usersLoading ? (
-                    <tr><td colSpan={6} className="text-center py-8 text-sm text-gray-400">Loading…</td></tr>
+                    <tr><td colSpan={7} className="text-center py-8 text-sm text-gray-400">Loading…</td></tr>
                   ) : (usersData?.users ?? []).map((u) => (
                     <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
@@ -254,7 +275,10 @@ export function AdminPage() {
                             {u.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate max-w-[150px]">{u.name}</p>
+                            <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+                              <span className="truncate max-w-[150px]">{u.name}</span>
+                              {isNew(u) && <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600">NEW</span>}
+                            </p>
                             <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{u.email}</p>
                           </div>
                         </div>
@@ -271,6 +295,7 @@ export function AdminPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600 font-semibold">{u.txCount}</td>
+                      <td className="px-4 py-3 text-[10px] text-gray-500">{lastActive(u)}</td>
                       <td className="px-4 py-3 text-[10px] text-gray-400">
                         {format(new Date(u.createdAt), 'MMM d, yyyy')}
                       </td>

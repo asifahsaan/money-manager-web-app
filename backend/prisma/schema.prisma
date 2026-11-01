@@ -86,6 +86,7 @@ model User {
   defaultCurrency String    @default("Rs.") @db.VarChar(10)
   role            UserRole  @default(USER)
   isActive        Boolean   @default(true)
+  lastActiveAt    DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

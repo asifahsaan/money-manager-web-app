@@ -15,6 +15,11 @@ export class AdminController {
     return this.adminService.getStats();
   }
 
+  @Get('users/new-count')
+  countNewUsers(@Query('since') since?: string) {
+    return this.adminService.countNewUsers(since);
+  }
+
   @Get('users')
   getUsers(
     @Query('search') search?: string,

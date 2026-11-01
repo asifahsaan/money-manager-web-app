@@ -115,7 +115,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
     if (!(await copy())) return;
     void rememberEmail();
     toast('Now paste it into the email body (Ctrl + V), then Send', { icon: '📋', duration: 6000 });
-    window.location.href = mailtoUrl(email.trim(), statementSubject(personName, lang), '');
+    window.location.href = mailtoUrl(email.trim(), statementSubject(personName, lang, ownerName), '');
   }
 
   const btn = 'flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90';
@@ -247,7 +247,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
             </button>
           ) : (
           <a
-            href={emailOk && text ? mailtoUrl(email.trim(), statementSubject(personName, lang), text) : undefined}
+            href={emailOk && text ? mailtoUrl(email.trim(), statementSubject(personName, lang, ownerName), text) : undefined}
             onClick={(e) => {
               if (!emailOk || !text) { e.preventDefault(); toast.error(text ? 'Enter a valid email first' : 'Nothing to send yet'); return; }
               void rememberEmail();

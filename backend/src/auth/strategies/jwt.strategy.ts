@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Account is disabled or no longer exists');
     }
+    this.usersService.touchLastActive(user);
     return {
       sub: payload.sub,
       email: payload.email,

@@ -354,7 +354,10 @@ export function LandingPage() {
 
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 sm:flex-row sm:px-6">
-            <p className="text-xs text-white/50">© {new Date().getFullYear()} Money Manager. All rights reserved.</p>
+            <p className="text-xs text-white/50">
+              © {new Date().getFullYear()} Money Manager. All rights reserved. ·{' '}
+              <Link to="/privacy" className="hover:text-white">Privacy</Link>
+            </p>
             <p className="flex items-center gap-1 text-xs text-white/50">
               Crafted with <Heart size={11} color="#f43f5e" fill="#f43f5e" /> by{' '}
               <span className="font-semibold text-white/80">Asif Ahsaan</span>

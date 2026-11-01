@@ -24,6 +24,7 @@ export class AdminService {
       volumeThisMonthRaw,
       totalWallets,
       totalAccounts,
+      activeLast7Days,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { isActive: true } }),
@@ -35,6 +36,7 @@ export class AdminService {
       this.prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'EXPENSE', date: { gte: monthStart } } }),
       this.prisma.wallet.count(),
       this.prisma.account.count(),
+      this.prisma.user.count({ where: { lastActiveAt: { gte: new Date(Date.now() - 7 * 86_400_000) } } }),
     ]);
 
     return {
@@ -52,6 +54,7 @@ export class AdminService {
       expenseVolumeThisMonth: Number(volumeThisMonthRaw._sum.amount ?? 0),
       totalWallets,
       totalAccounts,
+      activeLast7Days,
     };
   }
 
@@ -128,7 +131,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         select: {
           id: true, name: true, email: true, role: true, isActive: true,
-          createdAt: true, defaultCurrency: true,
+          createdAt: true, lastActiveAt: true, defaultCurrency: true,
           _count: { select: { accounts: true } },
         },
       }),
@@ -149,6 +152,13 @@ export class AdminService {
     }));
 
     return { users: enriched, total, page, pages: Math.ceil(total / limit) };
+  }
+
+  /** Sign-ups after a moment in time — the Admin badge. A bad date counts the last 7 days. */
+  async countNewUsers(since?: string) {
+    const parsed = since ? new Date(since) : null;
+    const from = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date(Date.now() - 7 * 86_400_000);
+    return { count: await this.prisma.user.count({ where: { createdAt: { gt: from } } }) };
   }
 
   async getUser(id: number) {
