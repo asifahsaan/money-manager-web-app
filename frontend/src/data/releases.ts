@@ -15,6 +15,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.14.0',
+    date: '2026-11-01',
+    title: 'Send a statement',
+    changes: [
+      { kind: 'new', text: 'Statement for a person — every loan with them (both ways), each payment with its date and wallet, and the total still owed, in one message.' },
+      { kind: 'new', text: 'Type any email to send it to, and save it for that person if you like. Send from your own email app or WhatsApp, in Roman Urdu or English, and edit it first.' },
+      { kind: 'new', text: 'Loans under the same name are put together automatically; a similar name (e.g. “Wasif Ali”) is offered so you can add it in one tap.' },
+    ],
+  },
+  {
     version: '1.13.0',
     date: '2026-10-04',
     title: 'Smarter money',

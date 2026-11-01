@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins, FileText } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
@@ -16,6 +16,7 @@ import { DebtReminderModal } from './DebtReminderModal';
 import { apiErrorMessage } from '@/lib/api-error';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { DebtActivityLog, Pager } from './DebtActivityLog';
+import { DebtStatementModal } from './DebtStatementModal';
 import type { DebtActivityRow } from '@/services/debt.service';
 
 const PAGE_SIZE = 10;
@@ -83,6 +84,7 @@ export function DebtTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reminder, setReminder] = useState<{ debt: Debt; justCreated: boolean } | null>(null);
   const [historyDebt, setHistoryDebt] = useState<Debt | null>(null);
+  const [statementFor, setStatementFor] = useState<string | null>(null);
   const [view, setView] = useState<View>('all');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>('due');
@@ -557,6 +559,16 @@ export function DebtTab() {
         </div>
       )}
 
+      {statementFor && (
+        <DebtStatementModal
+          personName={statementFor}
+          allDebts={debts}
+          wallets={wallets}
+          currency={currency}
+          onClose={() => setStatementFor(null)}
+        />
+      )}
+
       {historyDebt && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setHistoryDebt(null)} />
@@ -618,6 +630,7 @@ export function DebtTab() {
             onDelete={(d) => setConfirmDelete(d.id)}
             onRemind={(d) => setReminder({ debt: d, justCreated: false })}
             onHistory={setHistoryDebt}
+            onStatement={(d) => setStatementFor(d.personName)}
           />
           <DebtActivityLog
             accountId={accountId}
@@ -685,6 +698,7 @@ function DebtList(props: {
   onDelete: (d: Debt) => void;
   onRemind: (d: Debt) => void;
   onHistory: (d: Debt) => void;
+  onStatement: (d: Debt) => void;
 }) {
   const { debts, view, search, sort, page } = props;
 
@@ -783,6 +797,7 @@ function DebtList(props: {
               onDelete={() => props.onDelete(d)}
               onRemind={() => props.onRemind(d)}
               onHistory={() => props.onHistory(d)}
+              onStatement={() => props.onStatement(d)}
             />
           ))}
         </ul>
@@ -800,7 +815,7 @@ function DebtList(props: {
   );
 }
 
-function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onRemind, onHistory }: {
+function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onRemind, onHistory, onStatement }: {
   debt: Debt;
   currency: string;
   wallets: { id: number; name: string }[];
@@ -811,6 +826,7 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
   onDelete: () => void;
   onRemind: () => void;
   onHistory: () => void;
+  onStatement: () => void;
 }) {
   const due = dueStatus(d);
   const dueText = dueLabel(d);
@@ -893,6 +909,13 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
               <MessageCircle size={11} /> Remind
             </button>
           )}
+          <button
+            onClick={onStatement}
+            title={`Everything with ${d.personName} — all loans and payments — in one email`}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-primary-700 bg-primary-50 border border-primary-200 hover:bg-primary-100 transition-colors"
+          >
+            <FileText size={11} /> Statement
+          </button>
           <button onClick={onHistory} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 bg-white border border-line hover:bg-gray-100 transition-colors">
             <History size={11} /> History
           </button>
