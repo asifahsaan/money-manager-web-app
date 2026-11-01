@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Copy, FileText, Loader2, Mail, MessageCircle, UserPlus, X } from 'lucide-react';
+import { Copy, FileText, Loader2, Mail, MessageCircle, Sparkles, UserPlus, X } from 'lucide-react';
 import type { Debt, Wallet } from '@/types';
 import { debtService } from '@/services/debt.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
 import { mailtoUrl, whatsappUrl, type ReminderLanguage } from '@/lib/debt-reminders';
 import { debtsOfPerson, personKey, similarNames, statementSubject, statementText } from '@/lib/debt-statement';
+import { statementHtml } from '@/lib/debt-statement-html';
 
 const LANG_KEY = 'mm_reminder_lang';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -59,7 +60,11 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
   const [saveEmail, setSaveEmail] = useState(false);
 
   const walletName = (id: number | null) => (id ? wallets.find((w) => w.id === id)?.name : undefined);
-  const generated = loading ? '' : statementText({ personName, debts: loaded, walletName, lang, ownerName, currency });
+  const input = { personName, debts: loaded, walletName, lang, ownerName, currency };
+  const generated = loading ? '' : statementText(input);
+  const html = loading || chosen.length === 0 ? '' : statementHtml(input);
+  // Designed = the HTML email (copied, then pasted into the email); Plain = editable text sent directly
+  const [view, setView] = useState<'designed' | 'plain'>('designed');
   // Regenerated when the options change; the user may still edit it before sending
   const [text, setText] = useState('');
   const [edited, setEdited] = useState(false);
@@ -94,11 +99,23 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Copied');
+      if (view === 'designed') await copyRich(html, generated);
+      else await navigator.clipboard.writeText(text);
+      toast.success(view === 'designed' ? 'Designed statement copied' : 'Copied');
+      return true;
     } catch {
-      toast.error('Could not copy — select the text and copy it');
+      toast.error('Could not copy — try Plain text');
+      return false;
     }
+  }
+
+  /** Designed: copy the formatted email, then open the email app with To + Subject — the user pastes it in. */
+  async function copyAndOpenEmail() {
+    if (!emailOk) return toast.error('Enter a valid email first');
+    if (!(await copy())) return;
+    void rememberEmail();
+    toast('Now paste it into the email body (Ctrl + V), then Send', { icon: '📋', duration: 6000 });
+    window.location.href = mailtoUrl(email.trim(), statementSubject(personName, lang), '');
   }
 
   const btn = 'flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90';
@@ -107,7 +124,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label="Send statement" className="relative flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface-raised shadow-2xl sm:rounded-2xl">
+      <div role="dialog" aria-modal="true" aria-label="Send statement" className={cn('relative flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface-raised shadow-2xl sm:rounded-2xl', view === 'designed' ? 'max-w-3xl' : 'max-w-lg')}>
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
@@ -173,10 +190,31 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
             </div>
           )}
 
+          {!loading && !noDebts && (
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex rounded-lg bg-gray-100 p-1" role="radiogroup" aria-label="Format">
+                {([['designed', 'Designed email'], ['plain', 'Plain text']] as const).map(([v, label]) => (
+                  <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
+                    className={cn('flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold transition-colors', view === v ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink')}>
+                    {v === 'designed' && <Sparkles size={12} />} {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-ink-muted">{view === 'designed' ? 'Copied, then pasted into the email' : 'Editable, sent as text'}</span>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex h-40 items-center justify-center text-sm text-ink-muted"><Loader2 size={16} className="mr-2 animate-spin" /> Loading every payment…</div>
           ) : noDebts ? (
             <p className="rounded-lg bg-gray-50 px-3 py-6 text-center text-sm text-ink-muted">Nothing open with {personName.trim()} — tick “Include settled” to send the full history.</p>
+          ) : view === 'designed' ? (
+            <iframe
+              title="Email preview"
+              srcDoc={html}
+              sandbox=""
+              className="h-[460px] w-full rounded-lg border border-line bg-white"
+            />
           ) : (
             <>
               <textarea
@@ -197,6 +235,17 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
           <button type="button" onClick={copy} disabled={!text} className={cn(btn, 'max-w-[110px] border border-line bg-surface text-ink disabled:opacity-50')}>
             <Copy size={15} /> Copy
           </button>
+          {view === 'designed' ? (
+            <button
+              type="button"
+              onClick={() => void copyAndOpenEmail()}
+              disabled={!html}
+              className={cn(btn, 'text-white disabled:opacity-50', !emailOk && 'opacity-50')}
+              style={{ background: 'rgb(var(--c-brand-600))' }}
+            >
+              <Mail size={16} /> Copy &amp; open email
+            </button>
+          ) : (
           <a
             href={emailOk && text ? mailtoUrl(email.trim(), statementSubject(personName, lang), text) : undefined}
             onClick={(e) => {
@@ -209,6 +258,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
           >
             <Mail size={16} /> Email
           </a>
+          )}
           <a
             href={text ? whatsappUrl(savedPhone, text) : undefined}
             target="_blank"
@@ -224,4 +274,32 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
     </div>,
     document.body,
   );
+}
+
+/** Puts the designed email on the clipboard as rich HTML (with a plain-text twin for apps that want text). */
+async function copyRich(html: string, plain: string) {
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      }),
+    ]);
+    return;
+  }
+  // Older browsers: select rendered HTML in a hidden element and copy it
+  const el = document.createElement('div');
+  el.contentEditable = 'true';
+  el.style.cssText = 'position:fixed;left:-9999px;top:0;';
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  const ok = document.execCommand('copy');
+  sel?.removeAllRanges();
+  el.remove();
+  if (!ok) throw new Error('copy failed');
 }

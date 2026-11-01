@@ -21,6 +21,7 @@ export const RELEASES: Release[] = [
     changes: [
       { kind: 'new', text: 'Statement for a person — every loan with them (both ways), each payment with its date and wallet, and the total still owed, in one message.' },
       { kind: 'new', text: 'Type any email to send it to, and save it for that person if you like. Send from your own email app or WhatsApp, in Roman Urdu or English, and edit it first.' },
+      { kind: 'new', text: 'A designed email version — header, total box and a table per loan, like a statement from a bank. Tap “Copy & open email”, paste it into the email and send.' },
       { kind: 'new', text: 'Loans under the same name are put together automatically; a similar name (e.g. “Wasif Ali”) is offered so you can add it in one tap.' },
     ],
   },
