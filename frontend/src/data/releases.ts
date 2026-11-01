@@ -15,6 +15,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.15.0',
+    date: '2026-11-01',
+    title: 'Debts by person',
+    changes: [
+      { kind: 'new', text: 'Debts are grouped by person — one line each with their total, how much has come back and the nearest due date. Tap to see every loan with them.' },
+      { kind: 'new', text: 'Record payment for a person: enter what they sent and it is applied to their oldest loan first, then the next — with a preview of which loans it settles.' },
+      { kind: 'improved', text: 'Switch between By person and All loans at the top of the list; your choice is remembered.' },
+    ],
+  },
+  {
     version: '1.14.1',
     date: '2026-11-01',
     title: 'Statement in one tap',

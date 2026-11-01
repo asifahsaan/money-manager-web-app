@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins, FileText } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Pencil, MessageCircle, CalendarClock, History, Search, Trash2, HandCoins, FileText, Users, List } from 'lucide-react';
 import { useAccountStore } from '@/stores/account.store';
 import { debtService } from '@/services/debt.service';
 import { walletService } from '@/services/wallet.service';
@@ -18,9 +18,12 @@ import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { DebtActivityLog, Pager } from './DebtActivityLog';
 import { DebtStatementModal } from './DebtStatementModal';
 import { StatementPersonPicker } from './StatementPersonPicker';
+import { PersonPaymentModal } from './PersonPaymentModal';
+import { personKey } from '@/lib/debt-statement';
 import type { DebtActivityRow } from '@/services/debt.service';
 
 const PAGE_SIZE = 10;
+const GROUP_KEY = 'mm_debts_grouped';
 type View = 'all' | 'RECEIVABLE' | 'PAYABLE' | 'closed';
 type Sort = 'due' | 'amount' | 'newest' | 'name';
 const SORT_LABEL: Record<Sort, string> = { due: 'Due date', amount: 'Amount left', newest: 'Newest', name: 'Name' };
@@ -87,6 +90,11 @@ export function DebtTab() {
   const [historyDebt, setHistoryDebt] = useState<Debt | null>(null);
   const [statementFor, setStatementFor] = useState<string | null>(null);
   const [pickStatement, setPickStatement] = useState(false);
+  // Debts list grouped by person (default) or one row per loan; remembered
+  const [grouped, setGrouped] = useState(() => {
+    try { return localStorage.getItem(GROUP_KEY) !== '0'; } catch { return true; }
+  });
+  const [personPay, setPersonPay] = useState<{ name: string; loans: Debt[] } | null>(null);
   const [view, setView] = useState<View>('all');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>('due');
@@ -272,6 +280,16 @@ export function DebtTab() {
         )}
         <AddButton label="Add debt" onClick={() => setShowCreate(true)} />
       </SectionBar>
+
+      {personPay && (
+        <PersonPaymentModal
+          personName={personPay.name}
+          loans={personPay.loans}
+          wallets={wallets}
+          currency={currency}
+          onClose={() => setPersonPay(null)}
+        />
+      )}
 
       {pickStatement && (
         <StatementPersonPicker
@@ -651,6 +669,9 @@ export function DebtTab() {
             onRemind={(d) => setReminder({ debt: d, justCreated: false })}
             onHistory={setHistoryDebt}
             onStatement={(d) => setStatementFor(d.personName)}
+            grouped={grouped}
+            onGrouped={(g) => { setGrouped(g); setPage(1); try { localStorage.setItem(GROUP_KEY, g ? '1' : '0'); } catch { /* ignore */ } }}
+            onPersonPay={(name, loans) => setPersonPay({ name, loans })}
           />
           <DebtActivityLog
             accountId={accountId}
@@ -719,8 +740,12 @@ function DebtList(props: {
   onRemind: (d: Debt) => void;
   onHistory: (d: Debt) => void;
   onStatement: (d: Debt) => void;
+  grouped: boolean;
+  onGrouped: (g: boolean) => void;
+  onPersonPay: (name: string, loans: Debt[]) => void;
 }) {
-  const { debts, view, search, sort, page } = props;
+  const { debts, view, search, sort, page, grouped } = props;
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
 
   const counts = useMemo(() => ({
     all: debts.filter(isOpen).length,
@@ -749,9 +774,54 @@ function DebtList(props: {
     });
   }, [debts, view, search, sort]);
 
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // By person: the same filtered loans, one group per name
+  const people = useMemo(() => {
+    const map = new Map<string, PersonGroup>();
+    for (const d of rows) {
+      const key = personKey(d.personName);
+      const g = map.get(key) ?? { key, name: d.personName.trim(), loans: [], net: 0, lent: 0, back: 0, due: null, latest: '' };
+      g.loans.push(d);
+      // show the name as it's usually written ("Wasif", not "wasif")
+      if (/^[a-z]/.test(g.name) && /^[A-Z]/.test(d.personName.trim())) g.name = d.personName.trim();
+      if (isOpen(d)) g.net += (d.type === 'RECEIVABLE' ? 1 : -1) * Number(d.remainingAmount);
+      // progress is about money I lent out; what I borrowed only affects the net
+      if (d.type === 'RECEIVABLE') {
+        g.lent += Number(d.totalAmount);
+        g.back += Number(d.settledAmount);
+      }
+      if (isOpen(d) && d.dueDate && (!g.due || d.dueDate < g.due)) g.due = d.dueDate;
+      if (d.date > g.latest) g.latest = d.date;
+      map.set(key, g);
+    }
+    return [...map.values()].sort((a, b) => {
+      if (sort === 'amount') return Math.abs(b.net) - Math.abs(a.net);
+      if (sort === 'name') return a.name.localeCompare(b.name);
+      if (sort === 'newest') return b.latest.localeCompare(a.latest);
+      if (a.due && b.due) return a.due.localeCompare(b.due);
+      if (a.due) return -1;
+      if (b.due) return 1;
+      return Math.abs(b.net) - Math.abs(a.net);
+    });
+  }, [rows, sort]);
+
+  const total = grouped ? people.length : rows.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const current = Math.min(page, pages);
   const shown = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const shownPeople = people.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const rowProps = (d: Debt) => ({
+    debt: d,
+    currency: props.currency,
+    wallets: props.wallets,
+    expanded: props.expandedId === d.id,
+    onToggle: () => props.onToggle(d.id),
+    onPay: () => props.onPay(d),
+    onEdit: () => props.onEdit(d),
+    onDelete: () => props.onDelete(d),
+    onRemind: () => props.onRemind(d),
+    onHistory: () => props.onHistory(d),
+    onStatement: () => props.onStatement(d),
+  });
 
   const tabs: { v: View; label: string }[] = [
     { v: 'all', label: 'All open' },
@@ -763,6 +833,14 @@ function DebtList(props: {
   return (
     <div className="card">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+        <div className="inline-flex rounded-lg bg-gray-100 p-0.5" role="radiogroup" aria-label="Group">
+          {([[true, 'By person', Users], [false, 'All loans', List]] as const).map(([g, label, Icon]) => (
+            <button key={label} type="button" role="radio" aria-checked={grouped === g} onClick={() => props.onGrouped(g)}
+              className={cn('flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors', grouped === g ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink')}>
+              <Icon size={13} /> {label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-1">
           {tabs.map((t) => (
             <button
@@ -798,35 +876,36 @@ function DebtList(props: {
         </div>
       </div>
 
-      {shown.length === 0 ? (
+      {total === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-ink-muted">
           {search ? 'No debts match your search.' : view === 'PAYABLE' ? 'You don’t owe anyone. 🎉' : view === 'RECEIVABLE' ? 'No one owes you right now.' : view === 'closed' ? 'No settled debts yet.' : 'No open debts.'}
         </p>
+      ) : grouped ? (
+        <ul className="divide-y divide-gray-100">
+          {shownPeople.map((g) => (
+            <PersonRow
+              key={g.key}
+              group={g}
+              currency={props.currency}
+              open={openPerson === g.key || (search.trim() !== '' && shownPeople.length === 1)}
+              onToggle={() => setOpenPerson(openPerson === g.key ? null : g.key)}
+              onStatement={() => props.onStatement(g.loans[0])}
+              onPay={() => props.onPersonPay(g.name, g.loans.filter(isOpen))}
+            >
+              {[...g.loans].sort((a, b) => a.date.localeCompare(b.date)).map((d) => <DebtRow key={d.id} {...rowProps(d)} nested />)}
+            </PersonRow>
+          ))}
+        </ul>
       ) : (
         <ul className="divide-y divide-gray-100">
-          {shown.map((d) => (
-            <DebtRow
-              key={d.id}
-              debt={d}
-              currency={props.currency}
-              wallets={props.wallets}
-              expanded={props.expandedId === d.id}
-              onToggle={() => props.onToggle(d.id)}
-              onPay={() => props.onPay(d)}
-              onEdit={() => props.onEdit(d)}
-              onDelete={() => props.onDelete(d)}
-              onRemind={() => props.onRemind(d)}
-              onHistory={() => props.onHistory(d)}
-              onStatement={() => props.onStatement(d)}
-            />
-          ))}
+          {shown.map((d) => <DebtRow key={d.id} {...rowProps(d)} />)}
         </ul>
       )}
 
-      {rows.length > 0 && (
+      {total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-muted">
           <span>
-            {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, rows.length)} of {rows.length}
+            {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, total)} of {total} {grouped ? (total === 1 ? 'person' : 'people') : (total === 1 ? 'loan' : 'loans')}
           </span>
           <Pager page={current} pages={pages} onChange={props.onPage} />
         </div>
@@ -835,7 +914,7 @@ function DebtList(props: {
   );
 }
 
-function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onRemind, onHistory, onStatement }: {
+function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit, onDelete, onRemind, onHistory, onStatement, nested }: {
   debt: Debt;
   currency: string;
   wallets: { id: number; name: string }[];
@@ -847,6 +926,8 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
   onRemind: () => void;
   onHistory: () => void;
   onStatement: () => void;
+  /** Shown inside a person group: no avatar/name repeat, indented */
+  nested?: boolean;
 }) {
   const due = dueStatus(d);
   const dueText = dueLabel(d);
@@ -859,14 +940,18 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
   const initials = d.personName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
   return (
-    <li>
-      <button onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: accent }}>
-          {initials || '?'}
-        </span>
+    <li className={cn(nested && 'bg-gray-50/40')}>
+      <button onClick={onToggle} className={cn('flex w-full items-center gap-3 py-3 pr-4 text-left transition-colors hover:bg-gray-50', nested ? 'pl-8 sm:pl-16' : 'pl-4')}>
+        {nested ? (
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
+        ) : (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: accent }}>
+            {initials || '?'}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="truncate text-sm font-semibold text-ink">{d.personName}</p>
+            <p className="truncate text-sm font-semibold text-ink">{nested ? (d.description?.trim() || format(new Date(d.date), 'd MMM yyyy')) : d.personName}</p>
             <span className={cn(
               'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
               receivable ? 'bg-income-light text-income-dark' : 'bg-expense-light text-expense-dark',
@@ -885,7 +970,7 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
             )}
           </div>
           <p className="truncate text-xs text-ink-muted">
-            {format(new Date(d.date), 'd MMM yyyy')}{d.description ? ` · ${d.description}` : ''}
+            {format(new Date(d.date), 'd MMM yyyy')}{!nested && d.description ? ` · ${d.description}` : ''}
           </p>
         </div>
         <div className="hidden w-28 shrink-0 sm:block" title={`${pct.toFixed(0)}% settled`}>
@@ -945,6 +1030,94 @@ function DebtRow({ debt: d, currency, wallets, expanded, onToggle, onPay, onEdit
           <button onClick={onDelete} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
             <Trash2 size={11} /> Delete
           </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+interface PersonGroup {
+  key: string;
+  name: string;
+  loans: Debt[];
+  /** open balance: what they owe me minus what I owe them */
+  net: number;
+  lent: number;
+  back: number;
+  /** nearest due date among open loans */
+  due: string | null;
+  latest: string;
+}
+
+/** One line per person; opens to show each of their loans. */
+function PersonRow({ group: g, currency, open, onToggle, onStatement, onPay, children }: {
+  group: PersonGroup;
+  currency: string;
+  open: boolean;
+  onToggle: () => void;
+  onStatement: () => void;
+  onPay: () => void;
+  children: React.ReactNode;
+}) {
+  const openLoans = g.loans.filter(isOpen).length;
+  const pct = g.lent > 0 ? Math.min(100, (g.back / g.lent) * 100) : 0;
+  const owesMe = g.net >= 0;
+  const initials = g.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+  const due = g.due ? dueStatus({ dueDate: g.due, status: 'OPEN' }) : null;
+  const dueText = g.due ? dueLabel({ dueDate: g.due, status: 'OPEN' }) : null;
+  return (
+    <li>
+      <div className={cn('flex items-center gap-3 px-4 py-3 transition-colors', open ? 'bg-primary-50/40' : 'hover:bg-gray-50')}>
+        <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-expanded={open}>
+          <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', openLoans ? (owesMe ? 'bg-income' : 'bg-expense') : 'bg-gray-400')}>
+            {initials || '?'}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="truncate text-sm font-semibold text-ink">{g.name}</span>
+              <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                {g.loans.length} loan{g.loans.length === 1 ? '' : 's'}
+              </span>
+              {dueText && (
+                <span className={cn('inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                  due?.kind === 'overdue' ? 'bg-red-50 text-red-600' : due?.kind === 'today' || due?.kind === 'soon' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500')}>
+                  <CalendarClock size={10} /> {dueText}
+                </span>
+              )}
+            </span>
+            <span className="block truncate text-xs text-ink-muted">
+              {g.lent > 0 ? `${formatCurrency(g.back, currency)} back of ${formatCurrency(g.lent, currency)}` : 'Money you borrowed'}
+            </span>
+          </span>
+          <span className="hidden w-28 shrink-0 sm:block" title={`${pct.toFixed(0)}% back`}>
+            <span className="block h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+              <span className="block h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: owesMe ? '#10B981' : '#EF4444' }} />
+            </span>
+            <span className="mt-1 block text-[10px] text-ink-muted">{pct.toFixed(0)}% back</span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className={cn('block text-sm font-bold tabular-nums', !openLoans ? 'text-ink-muted' : owesMe ? 'text-income' : 'text-expense')}>
+              {formatCurrency(Math.abs(g.net), currency)}
+            </span>
+            <span className="block text-[10px] text-ink-muted">{!openLoans ? 'settled' : owesMe ? 'owes you' : 'you owe'}</span>
+          </span>
+          {open ? <ChevronUp size={14} className="shrink-0 text-ink-muted" /> : <ChevronDown size={14} className="shrink-0 text-ink-muted" />}
+        </button>
+      </div>
+      {open && (
+        <div className="border-t border-gray-100">
+          <div className="flex flex-wrap items-center gap-2 bg-primary-50/40 px-4 pb-2.5 sm:pl-16">
+            {openLoans > 0 && (
+              <button onClick={onPay} className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold text-white active:scale-95" style={{ background: 'rgb(var(--c-brand-600))' }}>
+                <HandCoins size={12} /> Record payment
+              </button>
+            )}
+            <button onClick={onStatement} className="flex items-center gap-1 rounded-xl border border-primary-200 bg-surface px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100">
+              <FileText size={12} /> Statement
+            </button>
+            <span className="text-[11px] text-ink-muted">Tap a loan below for its own actions</span>
+          </div>
+          <ul className="divide-y divide-gray-100 border-t border-gray-100">{children}</ul>
         </div>
       )}
     </li>
