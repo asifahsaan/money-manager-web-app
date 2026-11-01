@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/lib/api-error';
 import { StatCard, SectionBar, AddButton } from '@/components/shared/StatCard';
 import { DebtActivityLog, Pager } from './DebtActivityLog';
 import { DebtStatementModal } from './DebtStatementModal';
+import { StatementPersonPicker } from './StatementPersonPicker';
 import type { DebtActivityRow } from '@/services/debt.service';
 
 const PAGE_SIZE = 10;
@@ -85,6 +86,7 @@ export function DebtTab() {
   const [reminder, setReminder] = useState<{ debt: Debt; justCreated: boolean } | null>(null);
   const [historyDebt, setHistoryDebt] = useState<Debt | null>(null);
   const [statementFor, setStatementFor] = useState<string | null>(null);
+  const [pickStatement, setPickStatement] = useState(false);
   const [view, setView] = useState<View>('all');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>('due');
@@ -259,8 +261,26 @@ export function DebtTab() {
   return (
     <div className="space-y-3">
       <SectionBar title="Debts & loans" meta="Money you lent or borrowed, with reminders and full history">
+        {debts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setPickStatement(true)}
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3.5 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-100"
+          >
+            <FileText size={15} /> Statement
+          </button>
+        )}
         <AddButton label="Add debt" onClick={() => setShowCreate(true)} />
       </SectionBar>
+
+      {pickStatement && (
+        <StatementPersonPicker
+          debts={debts}
+          currency={currency}
+          onClose={() => setPickStatement(false)}
+          onPick={(name) => { setPickStatement(false); setStatementFor(name); }}
+        />
+      )}
 
       {/* ── Create modal ── */}
       {showCreate && (

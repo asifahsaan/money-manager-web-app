@@ -15,6 +15,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.14.1',
+    date: '2026-11-01',
+    title: 'Statement in one tap',
+    changes: [
+      { kind: 'improved', text: 'A Statement button at the top of Debts — pick a person from the list (with what they owe) and their statement opens.' },
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-11-01',
     title: 'Send a statement',
