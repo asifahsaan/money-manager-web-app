@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useConnectionStore } from '@/stores/connection.store';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
@@ -17,8 +18,16 @@ apiClient.interceptors.request.use((config) => {
 
 // Handle 401 globally — clear token and redirect to login
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    useConnectionStore.getState().setReachable(true);
+    return response;
+  },
   (error) => {
+    // No answer at all, or a gateway error: the problem is the connection, not the request
+    if (!axios.isCancel(error)) {
+      const status = error.response?.status;
+      useConnectionStore.getState().setReachable(!!status && ![502, 503, 504].includes(status));
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('mm_token');
       localStorage.removeItem('mm_user');

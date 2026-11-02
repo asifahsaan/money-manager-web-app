@@ -1,5 +1,6 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { PanelLeft, Plus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
@@ -16,6 +17,8 @@ import { pageTitle } from '@/components/shared/navigation';
 import { TransactionModal } from '@/pages/transactions/components/TransactionModal';
 import { PageLoader } from '@/components/ui/LoadingSpinner';
 import { useAutoRecurring } from '@/lib/use-auto-recurring';
+import { useConnectionProblem, useConnectionWatcher, usePageDataMissing } from '@/lib/use-connection';
+import { ConnectionBanner, ConnectionErrorScreen, RefreshButton } from '@/components/shared/ConnectionStatus';
 
 const COLLAPSE_KEY = 'mm_sidebar_collapsed';
 
@@ -25,6 +28,7 @@ export function DashboardLayout() {
   useAutoRecurring(token ? activeAccountId : null);
   const { open: quickAddOpen, setOpen: setQuickAddOpen } = useQuickAddStore();
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const qc = useQueryClient();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -34,21 +38,34 @@ export function DashboardLayout() {
   });
   const { pathname } = useLocation();
 
-  useEffect(() => {
-    if (!token) return;
+  const loadAccounts = useCallback(
+    () =>
+      accountService
+        .list()
+        .then((res) => {
+          if (res.success) {
+            setAccounts(res.data);
+          }
+        })
+        .catch(() => {
+          // Expired token: axios interceptor redirects to /login. Network: the connection watcher retries.
+        })
+        .finally(() => setLoadingAccounts(false)),
+    [setAccounts],
+  );
 
-    accountService
-      .list()
-      .then((res) => {
-        if (res.success) {
-          setAccounts(res.data);
-        }
-      })
-      .catch(() => {
-        // Token may be expired — axios interceptor will redirect to /login
-      })
-      .finally(() => setLoadingAccounts(false));
-  }, [token, setAccounts]);
+  useEffect(() => {
+    if (token) void loadAccounts();
+  }, [token, loadAccounts]);
+
+  const refresh = useCallback(
+    () => Promise.all([loadAccounts(), qc.invalidateQueries()]),
+    [loadAccounts, qc],
+  );
+
+  const problem = useConnectionProblem();
+  const pageDataMissing = usePageDataMissing();
+  useConnectionWatcher(() => void refresh());
 
   const toggleSidebar = () => {
     setSidebarCollapsed((c) => {
@@ -66,6 +83,8 @@ export function DashboardLayout() {
   if (loadingAccounts) return <PageLoader />;
 
   const currency = accounts.find((a) => a.id === activeAccountId)?.currency ?? 'Rs.';
+  // Nothing to show: accounts never loaded, or this page's data failed while the connection is down
+  const showError = accounts.length === 0 ? !!problem : !!problem && pageDataMissing;
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
@@ -98,6 +117,7 @@ export function DashboardLayout() {
           </div>
 
           <div className="flex flex-shrink-0 items-center gap-1">
+            <RefreshButton onRefresh={refresh} />
             <WhatsNewButton />
             <DueDebtsBell />
             <ThemeToggle />
@@ -118,8 +138,14 @@ export function DashboardLayout() {
           <AccountSelector />
         </div>
 
+        {problem && !showError && <ConnectionBanner problem={problem} onRetry={refresh} />}
+
         <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <Outlet />
+          {showError && <ConnectionErrorScreen problem={problem} onRetry={refresh} />}
+          {/* Stays mounted while hidden, so its requests can retry and bring it back */}
+          <div className={showError ? 'hidden' : 'contents'}>
+            <Outlet />
+          </div>
         </main>
       </div>
 

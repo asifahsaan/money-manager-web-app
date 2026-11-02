@@ -29,6 +29,7 @@ const LandingPage = page(() => import('@/pages/landing/LandingPage'), 'LandingPa
 
 const withSuspense = (el: React.ReactNode) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
 import { setupNativeApp } from '@/lib/native';
+import { RouteErrorScreen } from '@/components/shared/ConnectionStatus';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -43,6 +44,12 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 1000 * 60 * 2,
+      // Try even when the device says offline, so a failure reaches the screen
+      // instead of the request silently waiting (a blank page and Rs. 0).
+      networkMode: 'always',
+    },
+    mutations: {
+      networkMode: 'always',
     },
   },
 });
@@ -58,6 +65,7 @@ const router = createBrowserRouter([
   },
   {
     element: <DashboardLayout />,
+    errorElement: <RouteErrorScreen />,
     children: [
       { path: '/overview', element: withSuspense(<OverviewPage />) },
       { path: '/transactions', element: withSuspense(<TransactionsPage />) },
