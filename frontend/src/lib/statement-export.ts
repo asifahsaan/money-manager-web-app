@@ -63,7 +63,7 @@ export function downloadStatementCsv(s: Statement) {
 
 // The built-in PDF font only covers Latin-1; swap the few symbols we use and
 // replace anything else (e.g. Urdu) rather than print garbage.
-function pdfText(v: string) {
+export function pdfText(v: string) {
   return v
     .replace(/→/g, '->')
     .replace(/›/g, '>')

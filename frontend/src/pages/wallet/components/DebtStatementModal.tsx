@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Copy, FileText, Loader2, Mail, MessageCircle, Sparkles, UserPlus, X } from 'lucide-react';
+import { Copy, FileDown, FileText, Loader2, Mail, MessageCircle, Sparkles, UserPlus, X } from 'lucide-react';
 import type { Debt, Wallet } from '@/types';
 import { debtService } from '@/services/debt.service';
 import { useAuthStore } from '@/stores/auth.store';
@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { mailtoUrl, whatsappUrl, type ReminderLanguage } from '@/lib/debt-reminders';
 import { debtsOfPerson, personKey, similarNames, statementSubject, statementText } from '@/lib/debt-statement';
 import { statementHtml } from '@/lib/debt-statement-html';
+import { statementPdf, statementPdfName } from '@/lib/debt-statement-pdf';
+import { shareOrSaveFile } from '@/lib/share-file';
 
 const LANG_KEY = 'mm_reminder_lang';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -118,7 +120,23 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
     window.location.href = mailtoUrl(email.trim(), statementSubject(personName, lang, ownerName), '');
   }
 
-  const btn = 'flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90';
+  const [makingPdf, setMakingPdf] = useState(false);
+  /** The statement as a PDF: shared on a phone (WhatsApp, Gmail…), downloaded on a computer. */
+  async function pdf() {
+    setMakingPdf(true);
+    try {
+      const blob = await statementPdf(input);
+      const result = await shareOrSaveFile(blob, statementPdfName(personName), statementSubject(personName, lang, ownerName));
+      if (result === 'saved') toast.success('PDF saved — attach it to the email or send it on WhatsApp', { duration: 5000 });
+    } catch (err) {
+      console.error('Statement PDF failed', err);
+      toast.error('Could not make the PDF');
+    } finally {
+      setMakingPdf(false);
+    }
+  }
+
+  const btn = 'flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-opacity hover:opacity-90';
   const noDebts = !loading && chosen.length === 0;
 
   return createPortal(
@@ -231,9 +249,12 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
           )}
         </div>
 
-        <div className="flex gap-2 border-t border-line px-5 py-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="flex gap-2 border-t border-line px-4 py-3 sm:px-5" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={copy} disabled={!text} className={cn(btn, 'max-w-[110px] border border-line bg-surface text-ink disabled:opacity-50')}>
-            <Copy size={15} /> Copy
+            <Copy size={15} /> <span className="max-sm:hidden">Copy</span>
+          </button>
+          <button type="button" onClick={() => void pdf()} disabled={!html || makingPdf} className={cn(btn, 'max-w-[110px] border border-line bg-surface text-ink disabled:opacity-50')}>
+            {makingPdf ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />} PDF
           </button>
           {view === 'designed' ? (
             <button
@@ -243,7 +264,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
               className={cn(btn, 'text-white disabled:opacity-50', !emailOk && 'opacity-50')}
               style={{ background: 'rgb(var(--c-brand-600))' }}
             >
-              <Mail size={16} /> Copy &amp; open email
+              <Mail size={16} /> <span className="sm:hidden">Email</span><span className="max-sm:hidden">Copy &amp; open email</span>
             </button>
           ) : (
           <a
