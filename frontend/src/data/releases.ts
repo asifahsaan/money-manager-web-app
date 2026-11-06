@@ -24,7 +24,7 @@ export const RELEASES: Release[] = [
       { kind: 'new', text: 'A Privacy page explains what is stored, where, and who can see it.' },
       { kind: 'improved', text: 'Statement emails read properly on a phone, and the subject now shows both names and the date.' },
       { kind: 'improved', text: 'The designed statement email has a small link to Money Manager in its footer.' },
-      { kind: 'new', text: 'Statement as a PDF: download it on a computer, or on a phone share it straight to WhatsApp or attach it to an email. Handy for your records too.' },
+      { kind: 'new', text: 'Statement as a PDF, with the app logo and your name as its owner. See it first, then download it, or on a phone share it straight to WhatsApp or attach it to an email. Handy for your records too.' },
       { kind: 'new', text: 'A Refresh button at the top of every screen.' },
       { kind: 'improved', text: 'With no internet, or while the server wakes up, the app now says so and has a Try again button.' },
       { kind: 'fixed', text: 'A failed load no longer shows an empty page or Rs. 0. The app also loads by itself when the connection returns.' },

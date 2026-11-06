@@ -11,7 +11,7 @@ import { mailtoUrl, whatsappUrl, type ReminderLanguage } from '@/lib/debt-remind
 import { debtsOfPerson, personKey, similarNames, statementSubject, statementText } from '@/lib/debt-statement';
 import { statementHtml } from '@/lib/debt-statement-html';
 import { statementPdf, statementPdfName } from '@/lib/debt-statement-pdf';
-import { shareOrSaveFile } from '@/lib/share-file';
+import { PdfPreviewModal } from '@/components/shared/PdfPreviewModal';
 
 const LANG_KEY = 'mm_reminder_lang';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -71,15 +71,18 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
   // Regenerated when the options change; the user may still edit it before sending
   const [text, setText] = useState('');
   const [edited, setEdited] = useState(false);
+  const [makingPdf, setMakingPdf] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   useEffect(() => {
     if (!edited && generated) setText(generated);
   }, [generated, edited]);
 
   useEffect(() => {
+    if (pdfBlob) return; // the preview handles Escape while it is open
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, pdfBlob]);
 
   const switchLang = (l: ReminderLanguage) => {
     setLang(l);
@@ -121,14 +124,11 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
     window.location.href = mailtoUrl(email.trim(), statementSubject(personName, lang, ownerName), '');
   }
 
-  const [makingPdf, setMakingPdf] = useState(false);
-  /** The statement as a PDF: shared on a phone (WhatsApp, Gmail…), downloaded on a computer. */
+  /** The statement as a PDF, shown first; download or share from the preview. */
   async function pdf() {
     setMakingPdf(true);
     try {
-      const blob = await statementPdf(input);
-      const result = await shareOrSaveFile(blob, statementPdfName(personName), statementSubject(personName, lang, ownerName));
-      if (result === 'saved') toast.success('PDF saved — attach it to the email or send it on WhatsApp', { duration: 5000 });
+      setPdfBlob(await statementPdf(input));
     } catch (err) {
       console.error('Statement PDF failed', err);
       toast.error('Could not make the PDF');
@@ -293,6 +293,14 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
           </a>
         </div>
       </div>
+      {pdfBlob && (
+        <PdfPreviewModal
+          blob={pdfBlob}
+          fileName={statementPdfName(personName)}
+          title={statementSubject(personName, lang, ownerName)}
+          onClose={() => setPdfBlob(null)}
+        />
+      )}
     </div>,
     document.body,
   );
