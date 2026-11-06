@@ -53,14 +53,26 @@ export async function statementPdf({ personName, debts, walletName, lang, ownerN
   const ly = 22;
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(lx, ly, L, L, 9, 9, 'F');
-  const p = (x: number, y: number): [number, number] => [lx + (x / 24) * L * 0.6 + L * 0.2, ly + (y / 24) * L * 0.6 + L * 0.2];
+  // The app logo (see BrandMark), drawn in a 64-unit box: "A" whose right foot is a wallet
+  const u = L / 64;
+  const p = (x: number, y: number): [number, number] => [lx + (x - 2) * u, ly + (y - 0.8) * u];
   doc.setDrawColor(...BRAND);
-  doc.setLineWidth(2.6);
+  doc.setLineWidth(8.5 * u);
   doc.setLineCap('round');
   doc.setLineJoin('round');
-  const line = (pts: [number, number][]) => pts.slice(1).forEach((q, i) => doc.line(...pts[i], ...q));
-  line([p(3, 17), p(8.5, 11.5), p(12.5, 15.5), p(21, 7)]);
-  line([p(15, 7), p(21, 7), p(21, 13)]);
+  const legs: [number, number][] = [p(15.4, 49), p(31.5, 14), p(42, 36)];
+  legs.slice(1).forEach((q, i) => doc.line(...legs[i], ...q));
+  const box = (x: number, y: number, w: number, h: number, r: number, fill: RGB) => {
+    doc.setFillColor(...fill);
+    doc.roundedRect(...p(x, y), w * u, h * u, r * u, r * u, 'F');
+  };
+  box(33, 35.25, 20, 18, 5, BRAND);
+  box(43.2, 38.95, 13.6, 10.6, 5.3, [255, 255, 255]);
+  box(44, 39.75, 12, 9, 4.5, [196, 181, 253]);
+  doc.setFillColor(...BRAND);
+  doc.circle(...p(48.6, 44.25), 2 * u, 'F');
+  box(23.2, 45.25, 3.3, 6, 1.1, [165, 180, 252]);
+  box(27.8, 40.75, 3.3, 10.5, 1.1, [165, 180, 252]);
   doc.setLineWidth(0.2);
   text('MONEY MANAGER', lx + L + 12, 38, 8.5, [224, 231, 255], true);
   text(T('Hisaab ki tafseel', 'Statement of account'), lx + L + 12, 60, 18, [255, 255, 255], true);

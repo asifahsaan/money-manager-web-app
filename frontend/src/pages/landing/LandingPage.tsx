@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { BrandMark } from '@/components/shared/BrandMark';
 import {
-  TrendingUp, Wallet, ArrowLeftRight, PieChart, Target, HandCoins,
+  Wallet, ArrowLeftRight, PieChart, Target, HandCoins,
   RefreshCw, ShieldCheck, Menu, X, Mail, ChevronDown, ChevronUp,
   UserPlus, FolderPlus, LineChart, CheckCircle2, Github, Heart,
 } from 'lucide-react';
@@ -73,9 +74,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <a href="#top" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-md" style={{ background: GRADIENT }}>
-              <TrendingUp size={18} color="white" />
-            </div>
+            <BrandMark size={36} className="shadow-md" />
             <div className="leading-tight">
               <p className="text-sm font-bold text-ink">Money Manager</p>
               <p className="-mt-0.5 text-[11px] text-ink-muted">Personal Finance</p>
@@ -303,9 +302,7 @@ export function LandingPage() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <div className="mb-3 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: GRADIENT }}>
-                <TrendingUp size={18} color="white" />
-              </div>
+              <BrandMark size={36} />
               <div className="leading-tight">
                 <p className="text-sm font-bold text-white">Money Manager</p>
                 <p className="-mt-0.5 text-[11px] text-white/60">Personal Finance</p>
