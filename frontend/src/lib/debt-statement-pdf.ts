@@ -23,13 +23,14 @@ export function statementPdfName(personName: string) {
   return `statement-${who}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 }
 
-export async function statementPdf({ personName, debts, walletName, lang, ownerName, currency }: StatementInput): Promise<Blob> {
+export async function statementPdf({ personName, debts, walletName, lang, ownerName, ownerEmail = '', currency }: StatementInput): Promise<Blob> {
   // Loaded on demand: keeps the PDF code out of the main bundle
   const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const T = (ur: string, en: string) => (lang === 'ur' ? ur : en);
   const m = (v: string | number) => pdfText(formatCurrency(Math.abs(Number(v)), currency));
   const name = pdfText(personName.trim());
   const owner = pdfText(ownerName.trim() || 'Money Manager');
+  const email = pdfText(ownerEmail.trim());
   const sorted = [...debts].sort((a, b) => a.date.localeCompare(b.date));
   const net = sorted.reduce((t, d) => (d.status === 'CLOSED' ? t : t + (d.type === 'RECEIVABLE' ? 1 : -1) * Number(d.remainingAmount)), 0);
   const today = format(new Date(), 'd MMM yyyy');
@@ -45,29 +46,49 @@ export async function statementPdf({ personName, debts, walletName, lang, ownerN
     doc.text(s, x, y, { align });
   };
 
-  // Header band
+  // Header band with the app logo: a rising line in a rounded square, like the app icon
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, W, 76, 'F');
-  text('MONEY MANAGER', M, 30, 8.5, [224, 231, 255], true);
-  text(T('Hisaab ki tafseel', 'Statement of account'), M, 52, 18, [255, 255, 255], true);
-  text(T('Tareekh', 'Date'), W - M, 30, 8.5, [224, 231, 255], false, 'right');
-  text(today, W - M, 46, 11, [255, 255, 255], true, 'right');
+  doc.rect(0, 0, W, 84, 'F');
+  const L = 40;
+  const lx = M;
+  const ly = 22;
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(lx, ly, L, L, 9, 9, 'F');
+  const p = (x: number, y: number): [number, number] => [lx + (x / 24) * L * 0.6 + L * 0.2, ly + (y / 24) * L * 0.6 + L * 0.2];
+  doc.setDrawColor(...BRAND);
+  doc.setLineWidth(2.6);
+  doc.setLineCap('round');
+  doc.setLineJoin('round');
+  const line = (pts: [number, number][]) => pts.slice(1).forEach((q, i) => doc.line(...pts[i], ...q));
+  line([p(3, 17), p(8.5, 11.5), p(12.5, 15.5), p(21, 7)]);
+  line([p(15, 7), p(21, 7), p(21, 13)]);
+  doc.setLineWidth(0.2);
+  text('MONEY MANAGER', lx + L + 12, 38, 8.5, [224, 231, 255], true);
+  text(T('Hisaab ki tafseel', 'Statement of account'), lx + L + 12, 60, 18, [255, 255, 255], true);
+  text(T('Tareekh', 'Date'), W - M, 38, 8.5, [224, 231, 255], false, 'right');
+  text(today, W - M, 54, 11, [255, 255, 255], true, 'right');
 
-  // Between
-  text(T('Kis ke darmiyan', 'Between'), M, 104, 8, MUTED);
-  text(`${owner}  &  ${name}`, M, 118, 12, INK, true);
+  // From (the owner, who issues it) and To
+  const half = (W - 2 * M) / 2;
+  text(T('Jaari karne wala', 'Issued by'), M, 112, 8, MUTED, true);
+  text(owner, M, 128, 12, INK, true);
+  if (email) text(email, M, 142, 9, MUTED);
+  text(T('Statement ka malik', 'Statement owner'), M, email ? 155 : 142, 8, BRAND, true);
+  text(T('Kis ke liye', 'Prepared for'), M + half, 112, 8, MUTED, true);
+  text(name, M + half, 128, 12, INK, true);
 
   // Total box
   const totalLabel = net > 0 ? T('Kul baqi - aap ke zimme', 'Total you owe me') : net < 0 ? T('Kul baqi - mere zimme', 'Total I owe you') : T('Hisaab barabar', 'All square');
+  const tb = 172;
   doc.setFillColor(...SOFT);
   doc.setDrawColor(...LINE);
-  doc.roundedRect(M, 134, W - 2 * M, 58, 6, 6, 'FD');
-  text(totalLabel, M + 14, 155, 9, MUTED);
-  text(m(net), M + 14, 179, 20, net > 0 ? GREEN : net < 0 ? RED : INK, true);
-  text(`${sorted.length} ${T('hisaab', sorted.length === 1 ? 'item' : 'items')}`, W - M - 14, 160, 9, MUTED, false, 'right');
-  text(`${T('Tak', 'As of')} ${today}`, W - M - 14, 174, 9, MUTED, false, 'right');
+  doc.roundedRect(M, tb, W - 2 * M, 58, 6, 6, 'FD');
+  text(totalLabel, M + 14, tb + 21, 9, MUTED);
+  text(m(net), M + 14, tb + 45, 20, net > 0 ? GREEN : net < 0 ? RED : INK, true);
+  text(`${sorted.length} ${T('hisaab', sorted.length === 1 ? 'item' : 'items')}`, W - M - 14, tb + 26, 9, MUTED, false, 'right');
+  text(`${T('Tak', 'As of')} ${today}`, W - M - 14, tb + 40, 9, MUTED, false, 'right');
 
-  let y = 220;
+  let y = tb + 86;
   sorted.forEach((d, i) => {
     const owedToMe = d.type === 'RECEIVABLE';
     const closed = d.status === 'CLOSED';
@@ -127,13 +148,30 @@ export async function statementPdf({ personName, debts, walletName, lang, ownerN
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 30;
   });
 
+  // Who issued it, at the end of the statement
+  if (y > H - 110) {
+    doc.addPage();
+    y = 50;
+  }
+  doc.setDrawColor(...LINE);
+  doc.line(M, y, M + 200, y);
+  text(owner, M, y + 16, 10, INK, true);
+  text(
+    T(`Statement ka malik${email ? ` · ${email}` : ''}`, `Statement owner${email ? ` · ${email}` : ''}`),
+    M, y + 30, 8.5, MUTED,
+  );
+  text(
+    T('Kisi farq ki surat mein upar diye gaye malik se rabta karein.', 'If anything looks different, please contact the owner above.'),
+    M, y + 44, 8.5, MUTED,
+  );
+
   // Footer on every page
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
     doc.setDrawColor(...LINE);
     doc.line(M, H - 34, W - M, H - 34);
-    text(`${T(`${owner} ki taraf se, Money Manager se banaya gaya`, `Prepared by ${owner} with Money Manager`)} · ${APP_URL}`, M, H - 22, 7.5, MUTED);
+    text(`${T(`${owner} ka statement · Money Manager se banaya gaya`, `${owner}'s statement · made with Money Manager`)} · ${APP_URL}`, M, H - 22, 7.5, MUTED);
     text(`${T('Safha', 'Page')} ${p} / ${pages}`, W - M, H - 22, 7.5, MUTED, false, 'right');
   }
 

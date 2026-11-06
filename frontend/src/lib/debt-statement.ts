@@ -44,6 +44,8 @@ export interface StatementInput {
   walletName: (id: number | null) => string | undefined;
   lang: ReminderLanguage;
   ownerName: string;
+  /** Shown on the PDF so the reader knows whose statement it is */
+  ownerEmail?: string;
   currency: string;
 }
 
