@@ -32,7 +32,6 @@ interface Props {
 export function DebtStatementModal({ personName, allDebts, wallets, currency, onClose }: Props) {
   const qc = useQueryClient();
   const ownerName = useAuthStore((s) => s.user?.name ?? '');
-  const ownerEmail = useAuthStore((s) => s.user?.email ?? '');
   const [lang, setLang] = useState<ReminderLanguage>(() => {
     try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ur'; } catch { return 'ur'; }
   });
@@ -63,7 +62,7 @@ export function DebtStatementModal({ personName, allDebts, wallets, currency, on
   const [saveEmail, setSaveEmail] = useState(false);
 
   const walletName = (id: number | null) => (id ? wallets.find((w) => w.id === id)?.name : undefined);
-  const input = { personName, debts: loaded, walletName, lang, ownerName, ownerEmail, currency };
+  const input = { personName, debts: loaded, walletName, lang, ownerName, currency };
   const generated = loading ? '' : statementText(input);
   const html = loading || chosen.length === 0 ? '' : statementHtml(input);
   // Designed = the HTML email (copied, then pasted into the email); Plain = editable text sent directly

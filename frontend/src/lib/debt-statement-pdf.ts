@@ -23,14 +23,13 @@ export function statementPdfName(personName: string) {
   return `statement-${who}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 }
 
-export async function statementPdf({ personName, debts, walletName, lang, ownerName, ownerEmail = '', currency }: StatementInput): Promise<Blob> {
+export async function statementPdf({ personName, debts, walletName, lang, ownerName, currency }: StatementInput): Promise<Blob> {
   // Loaded on demand: keeps the PDF code out of the main bundle
   const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const T = (ur: string, en: string) => (lang === 'ur' ? ur : en);
   const m = (v: string | number) => pdfText(formatCurrency(Math.abs(Number(v)), currency));
   const name = pdfText(personName.trim());
   const owner = pdfText(ownerName.trim() || 'Money Manager');
-  const email = pdfText(ownerEmail.trim());
   const sorted = [...debts].sort((a, b) => a.date.localeCompare(b.date));
   const net = sorted.reduce((t, d) => (d.status === 'CLOSED' ? t : t + (d.type === 'RECEIVABLE' ? 1 : -1) * Number(d.remainingAmount)), 0);
   const today = format(new Date(), 'd MMM yyyy');
@@ -68,18 +67,13 @@ export async function statementPdf({ personName, debts, walletName, lang, ownerN
   text(T('Tareekh', 'Date'), W - M, 38, 8.5, [224, 231, 255], false, 'right');
   text(today, W - M, 54, 11, [255, 255, 255], true, 'right');
 
-  // From (the owner, who issues it) and To
-  const half = (W - 2 * M) / 2;
-  text(T('Jaari karne wala', 'Issued by'), M, 112, 8, MUTED, true);
-  text(owner, M, 128, 12, INK, true);
-  if (email) text(email, M, 142, 9, MUTED);
-  text(T('Statement ka malik', 'Statement owner'), M, email ? 155 : 142, 8, BRAND, true);
-  text(T('Kis ke liye', 'Prepared for'), M + half, 112, 8, MUTED, true);
-  text(name, M + half, 128, 12, INK, true);
+  // Between
+  text(T('Kis ke darmiyan', 'Between'), M, 112, 8, MUTED);
+  text(`${owner}  &  ${name}`, M, 126, 12, INK, true);
 
   // Total box
   const totalLabel = net > 0 ? T('Kul baqi - aap ke zimme', 'Total you owe me') : net < 0 ? T('Kul baqi - mere zimme', 'Total I owe you') : T('Hisaab barabar', 'All square');
-  const tb = 172;
+  const tb = 142;
   doc.setFillColor(...SOFT);
   doc.setDrawColor(...LINE);
   doc.roundedRect(M, tb, W - 2 * M, 58, 6, 6, 'FD');
@@ -148,30 +142,13 @@ export async function statementPdf({ personName, debts, walletName, lang, ownerN
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 30;
   });
 
-  // Who issued it, at the end of the statement
-  if (y > H - 110) {
-    doc.addPage();
-    y = 50;
-  }
-  doc.setDrawColor(...LINE);
-  doc.line(M, y, M + 200, y);
-  text(owner, M, y + 16, 10, INK, true);
-  text(
-    T(`Statement ka malik${email ? ` · ${email}` : ''}`, `Statement owner${email ? ` · ${email}` : ''}`),
-    M, y + 30, 8.5, MUTED,
-  );
-  text(
-    T('Kisi farq ki surat mein upar diye gaye malik se rabta karein.', 'If anything looks different, please contact the owner above.'),
-    M, y + 44, 8.5, MUTED,
-  );
-
   // Footer on every page
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
     doc.setDrawColor(...LINE);
     doc.line(M, H - 34, W - M, H - 34);
-    text(`${T(`${owner} ka statement · Money Manager se banaya gaya`, `${owner}'s statement · made with Money Manager`)} · ${APP_URL}`, M, H - 22, 7.5, MUTED);
+    text(`${T(`${owner} ki taraf se, Money Manager se banaya gaya`, `Prepared by ${owner} with Money Manager`)} · ${APP_URL}`, M, H - 22, 7.5, MUTED);
     text(`${T('Safha', 'Page')} ${p} / ${pages}`, W - M, H - 22, 7.5, MUTED, false, 'right');
   }
 
