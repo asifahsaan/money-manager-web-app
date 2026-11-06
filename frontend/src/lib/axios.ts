@@ -28,7 +28,9 @@ apiClient.interceptors.response.use(
       const status = error.response?.status;
       useConnectionStore.getState().setReachable(!!status && ![502, 503, 504].includes(status));
     }
-    if (error.response?.status === 401) {
+    // A 401 from login/register is a wrong password: let the form show it instead of reloading the page
+    const authCall = /\/auth\/(login|register)$/.test(error.config?.url ?? '');
+    if (error.response?.status === 401 && !authCall) {
       localStorage.removeItem('mm_token');
       localStorage.removeItem('mm_user');
       window.location.href = '/login';
