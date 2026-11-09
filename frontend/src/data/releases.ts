@@ -15,6 +15,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.17.0',
+    date: '2026-11-09',
+    title: 'Activity log',
+    changes: [
+      { kind: 'new', text: 'Activity log: every transaction, debt, payment, wallet, budget, goal, recurring and category you add, edit or delete is recorded with the time — and for edits and deletes, what it was before.' },
+      { kind: 'new', text: 'Each entry also shows what changed along with it, like a wallet balance or what is left on a debt.' },
+      { kind: 'improved', text: 'The logo is back to the rising line, and it is now on the browser tab and the phone icon too.' },
+    ],
+  },
+  {
     version: '1.16.0',
     date: '2026-11-01',
     title: 'Ready to share',

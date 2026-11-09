@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { auditMiddleware } from '../audit/audit-middleware';
 
 @Injectable()
 export class PrismaService
@@ -7,6 +8,7 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   async onModuleInit() {
+    this.$use(auditMiddleware);
     await this.$connect();
   }
 

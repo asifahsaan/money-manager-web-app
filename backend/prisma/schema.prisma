@@ -116,6 +116,7 @@ model Account {
   goals        Goal[]
   debts        Debt[]
   recurrings   Recurring[]
+  auditLogs    AuditLog[]
 
   @@index([userId])
   @@map("accounts")
@@ -460,4 +461,33 @@ model Setting {
 
   @@unique([userId, key])
   @@map("settings")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG — every change to an account's money records, with when and by
+// whom. One request (e.g. deleting a transaction) writes one row per record it
+// touched; they share a requestId. sideEffect marks follow-on updates the app
+// makes itself, like a wallet balance or a debt's remaining amount.
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  accountId  Int
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId     Int?
+  requestId  String   @db.VarChar(36)
+  method     String   @db.VarChar(8)
+  path       String   @db.VarChar(200)
+  entity     String   @db.VarChar(30)
+  entityId   Int?
+  action     String   @db.VarChar(10)
+  changed    String[] @default([])
+  sideEffect Boolean  @default(false)
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([requestId])
+  @@map("audit_logs")
 }

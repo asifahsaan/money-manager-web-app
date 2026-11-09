@@ -23,6 +23,7 @@ const StatisticsPage = page(() => import('@/pages/statistics/StatisticsPage'), '
 const StatementsPage = page(() => import('@/pages/statements/StatementsPage'), 'StatementsPage');
 const TaxReportPage = page(() => import('@/pages/tax/TaxReportPage'), 'TaxReportPage');
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage');
+const ActivityLogPage = page(() => import('@/pages/activity/ActivityLogPage'), 'ActivityLogPage');
 const PrivacyPage = page(() => import('@/pages/legal/PrivacyPage'), 'PrivacyPage');
 const AdminPage = page(() => import('@/pages/admin/AdminPage'), 'AdminPage');
 const LandingPage = page(() => import('@/pages/landing/LandingPage'), 'LandingPage');
@@ -76,6 +77,7 @@ const router = createBrowserRouter([
       { path: '/settings', element: withSuspense(<SettingsPage />) },
       { path: '/statements', element: withSuspense(<StatementsPage />) },
       { path: '/tax-report', element: withSuspense(<TaxReportPage />) },
+      { path: '/activity-log', element: withSuspense(<ActivityLogPage />) },
     ],
   },
   { path: '/admin', element: withSuspense(<AdminPage />) },

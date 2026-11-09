@@ -8,6 +8,7 @@ import {
   Wallet,
   Settings,
   Shield,
+  History,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/wallet', label: 'Wallets & Plans', shortLabel: 'Wallets', icon: Wallet },
   { to: '/statements', label: 'Statements', shortLabel: 'Statements', icon: FileText, mobile: false },
   { to: '/tax-report', label: 'Tax Report', shortLabel: 'Tax', icon: Scale, mobile: false },
+  { to: '/activity-log', label: 'Activity Log', shortLabel: 'Log', icon: History, mobile: false },
 ];
 
 export const SETTINGS_NAV: NavItem = { to: '/settings', label: 'Settings', shortLabel: 'Settings', icon: Settings };
@@ -44,6 +46,7 @@ const TITLES: [string, string][] = [
   ['/settings', 'Settings'],
   ['/statements', 'Statements'],
   ['/tax-report', 'Tax Report'],
+  ['/activity-log', 'Activity Log'],
 ];
 
 export function pageTitle(pathname: string): string {

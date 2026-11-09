@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { LogOut, User as UserIcon, Lock, Wallet, Mail, Palette } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, History, LogOut, User as UserIcon, Lock, Wallet, Mail, Palette } from 'lucide-react';
 import { ThemeSegmented } from '@/components/shared/ThemeToggle';
 import { useAuthStore } from '@/stores/auth.store';
 import { useAccountStore } from '@/stores/account.store';
@@ -139,6 +140,16 @@ export function SettingsPage() {
           <ThemeSegmented />
         </div>
       </section>
+
+      {/* Activity log — on phones the sidebar link isn't there */}
+      <Link to="/activity-log" className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300">
+        <History size={16} className="text-gray-700" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-gray-700">Activity log</span>
+          <span className="block text-xs text-gray-500">Every add, edit and delete, with the time</span>
+        </span>
+        <ChevronRight size={16} className="text-gray-400" />
+      </Link>
 
       {/* Profile */}
       <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
