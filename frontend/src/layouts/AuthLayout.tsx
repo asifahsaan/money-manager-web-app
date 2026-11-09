@@ -34,7 +34,7 @@ export function AuthLayout() {
           }}
         />
         <Link to="/" className="relative flex items-center gap-2.5">
-          <BrandMark size={36} className="rounded-[10px] ring-1 ring-white/25" />
+          <BrandMark size={36} className="bg-white/15 ring-1 ring-white/25" />
           <span className="text-lg font-semibold tracking-tight">Money Manager</span>
         </Link>
 
