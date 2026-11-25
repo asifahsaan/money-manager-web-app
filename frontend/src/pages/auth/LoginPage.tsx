@@ -9,6 +9,7 @@ import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { FormField } from '@/components/ui/FormField';
 
 const schema = z.object({
@@ -61,9 +62,8 @@ export function LoginPage() {
         </FormField>
 
         <FormField label="Password" required error={errors.password?.message}>
-          <Input
+          <PasswordInput
             {...register('password')}
-            type="password"
             placeholder="••••••••"
             autoComplete="current-password"
             error={!!errors.password}

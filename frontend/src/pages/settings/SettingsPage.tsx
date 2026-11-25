@@ -12,6 +12,7 @@ import { useAccountStore } from '@/stores/account.store';
 import { userService } from '@/services/user.service';
 import { accountService } from '@/services/account.service';
 import { CategoryManager } from './CategoryManager';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 const CURRENCIES = ['Rs.', '$', '€', '£', '₹', '¥', 'AED', 'SAR'];
 
@@ -202,11 +203,9 @@ export function SettingsPage() {
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Confirm with Password</label>
-            <input
-              type="password"
+            <PasswordInput
               {...regE('password')}
               placeholder="Your current password"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
             />
             {errE.password && <p className="text-red-500 text-xs mt-1">{errE.password.message}</p>}
           </div>
@@ -251,10 +250,8 @@ export function SettingsPage() {
         <form onSubmit={hsPw((d) => passwordMutation.mutate(d))} className="space-y-3">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Current Password</label>
-            <input
-              type="password"
+            <PasswordInput
               {...regPw('currentPassword')}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
             />
             {errPw.currentPassword && (
               <p className="text-red-500 text-xs mt-1">{errPw.currentPassword.message}</p>
@@ -262,10 +259,8 @@ export function SettingsPage() {
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">New Password</label>
-            <input
-              type="password"
+            <PasswordInput
               {...regPw('newPassword')}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
             />
             {errPw.newPassword && (
               <p className="text-red-500 text-xs mt-1">{errPw.newPassword.message}</p>
@@ -273,10 +268,8 @@ export function SettingsPage() {
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Confirm New Password</label>
-            <input
-              type="password"
+            <PasswordInput
               {...regPw('confirmPassword')}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
             />
             {errPw.confirmPassword && (
               <p className="text-red-500 text-xs mt-1">{errPw.confirmPassword.message}</p>

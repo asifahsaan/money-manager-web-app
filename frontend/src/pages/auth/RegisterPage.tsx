@@ -11,6 +11,7 @@ import { useAccountStore } from '@/stores/account.store';
 import { accountService } from '@/services/account.service';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { FormField } from '@/components/ui/FormField';
 
 const schema = z
@@ -98,9 +99,8 @@ export function RegisterPage() {
         </FormField>
 
         <FormField label="Password" required error={errors.password?.message}>
-          <Input
+          <PasswordInput
             {...register('password')}
-            type="password"
             placeholder="Min. 6 characters"
             autoComplete="new-password"
             error={!!errors.password}
@@ -113,9 +113,8 @@ export function RegisterPage() {
           required
           error={errors.confirmPassword?.message}
         >
-          <Input
+          <PasswordInput
             {...register('confirmPassword')}
-            type="password"
             placeholder="Repeat password"
             autoComplete="new-password"
             error={!!errors.confirmPassword}

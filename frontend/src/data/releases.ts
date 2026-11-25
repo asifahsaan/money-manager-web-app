@@ -15,6 +15,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.17.1',
+    date: '2026-11-25',
+    title: 'See your password as you type',
+    changes: [
+      { kind: 'improved', text: 'Password boxes on sign in, sign up and Settings have an eye button, so you can check what you typed.' },
+    ],
+  },
+  {
     version: '1.17.0',
     date: '2026-11-09',
     title: 'Activity log',
